@@ -32,9 +32,12 @@ merged_seurat <- merge(
                    SF3391,SF3448,SF9358,SF9494,SF9798,SF9962),
   add.cell.ids = ls()[7:22],project = 'GBM')
 
+head(merged_seurat@meta.data)
+
 # create a sample column
 merged_seurat$sample <-rownames(merged_seurat@meta.data)
 head(merged_seurat@meta.data)
+
 
 # split sample column
 merged_seurat@meta.data <- separate(merged_seurat@meta.data, col = 'sample', into = c('Sample', 'Barcode'), 
@@ -48,6 +51,8 @@ merged_seurat$mitoPercent <- PercentageFeatureSet(merged_seurat, pattern='^Mt-')
 merged_seurat_filtered <- subset(merged_seurat, subset = nFeature_RNA > 200 &
                                    nFeature_RNA < 8000 &
                                    mitoPercent < 25)
+merged_seurat
+merged_seurat_filtered
 
 merged_seurat_filtered
 VlnPlot(merged_seurat_filtered, features = c("nFeature_RNA", "nCount_RNA"), ncol = 2)
@@ -55,6 +60,8 @@ VlnPlot(merged_seurat_filtered, features = c("nFeature_RNA", "nCount_RNA"), ncol
 
 obj.list <- SplitObject(merged_seurat_filtered, split.by = 'Sample')
 
+
+obj.list$SF11082
 #Part II: SCT intergration and save files for furthur analysis
 
 obj.list <- lapply(X = obj.list, FUN = SCTransform)
@@ -69,3 +76,10 @@ lapply(obj.list, function(x) head(rownames(x)))
 print(anchors)
 
 rownames(anchors)
+
+obj.list <- IntegrateLayers(
+  object = obj.list, method = HarmonyIntegration,
+  orig.reduction = "pca", new.reduction = "harmony",
+  verbose = FALSE
+)
+
