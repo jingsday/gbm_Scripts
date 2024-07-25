@@ -14,7 +14,7 @@ sc.logging.print_versions()
 sc.set_figure_params(facecolor="white", figsize=(8, 8))
 sc.settings.verbosity = 3
 
-directory = '/home/jing/Phd_project/project_GBM/gbm_DATA/gbm_DATA_GSE174554/gbm_DATA_scRNA_atlas'
+directory = '/home/jyang/Phd_project/project_GBM/gbm_DATA/gbm_DATA_GSE174554/gbm_DATA_scRNA_atlas'
 os.chdir(directory)
 
 
@@ -28,7 +28,6 @@ adata_list = []
 
 # Loop over each sample and read in the AnnData object
 for name in names_list:
-
     mtx =f"{name}_matrix.mtx.gz"
     adata = sc.read_mtx(mtx)
     cells=pd.read_csv(f'{name}_barcodes.tsv.gz',header=None)
@@ -65,4 +64,7 @@ for ad in adata_list:
 # Now run scanorama.correct_scanpy with the CSR formatted AnnData objects
 adatas_cor = scanorama.correct_scanpy(adatas_csr, return_dimred=True)
 
-adatas_cor.write_h5ad('gbm_OUTPUT_scanorama_cor_full.h5ad')
+batch_names = [adata.obs['source'].iloc[0] for adata in adatas_cor]
+adatas_cor_full = adatas_cor[0].concatenate(adatas_cor[1:], batch_key='source', batch_categories=batch_names)                                  
+
+adatas_cor_full.write_h5ad('gbm_OUTPUT_scanorama_cor_full.h5ad')
