@@ -5,7 +5,7 @@ library(gridExtra)
 library(Matrix)
 library(stringr)
 
-setwd('/home/jing/Phd_project/project_GBM/gbm_DATA/gbm_DATA_scRNA_atlas')
+wkdir <- '/home/jing/Phd_project/project_GBM/gbm_DATA/gbm_DATA_GSE174554/gbm_DATA_scRNA_atlas/'
 
 names_list <- c('GSM5319518_SF2777','GSM5319548_SF2979','GSM5319519_SF2990',
                 'GSM5319549_SF3073','GSM5319520_SF3076','GSM5319550_SF3243',
@@ -14,9 +14,9 @@ names_list <- c('GSM5319518_SF2777','GSM5319548_SF2979','GSM5319519_SF2990',
                 'GSM5319530_SF9358','GSM5319568_SF9962','GSM5319559_SF9798','GSM5319532_SF9494')
 
 for (name in names_list) {
-  cts <- ReadMtx(mtx = paste0(name,'_matrix.mtx.gz'),
-                 features = paste0(name,'_features.tsv.gz'),
-                 cells = paste0(name,'_barcodes.tsv.gz'),feature.column = 1)
+  cts <- ReadMtx(mtx = paste0(wkdir,name,'_matrix.mtx.gz'),
+                 features = paste0(wkdir,name,'_features.tsv.gz'),
+                 cells = paste0(wkdir,name,'_barcodes.tsv.gz'),feature.column = 1)
   
   # create seurat objects
   assign(str_sub(name,start=12), CreateSeuratObject(counts = cts,min.cells = 3, min.features = 200))
@@ -30,7 +30,7 @@ merged_seurat <- merge(
   x = SF11082,y = c(SF11488,SF11916,SF12382,SF2777,
                    SF2979,SF2990,SF3073,SF3076,SF3243,
                    SF3391,SF3448,SF9358,SF9494,SF9798,SF9962),
-  add.cell.ids = ls()[7:22],project = 'GBM')
+  add.cell.ids = ls()[4:19],project = 'GBM')
 
 head(merged_seurat@meta.data)
 
@@ -42,26 +42,22 @@ head(merged_seurat@meta.data)
 # split sample column
 merged_seurat@meta.data <- separate(merged_seurat@meta.data, col = 'sample', into = c('Sample', 'Barcode'), 
                                     sep = '_')
-
+head(merged_seurat@meta.data)
 # calculate mitochondrial percentage
 merged_seurat$mitoPercent <- PercentageFeatureSet(merged_seurat, pattern='^Mt-')
 
-#Murine cells were filtered to retain higher quality cells (>200 &<8000 uniquely identified genes
-#<25% of reads mapped to mitochondrial genes),
-merged_seurat_filtered <- subset(merged_seurat, subset = nFeature_RNA > 200 &
-                                   nFeature_RNA < 8000 &
-                                   mitoPercent < 25)
-merged_seurat
-merged_seurat_filtered
 
-merged_seurat_filtered
-VlnPlot(merged_seurat_filtered, features = c("nFeature_RNA", "nCount_RNA"), ncol = 2)
+merged_seurat_filtered <- subset(merged_seurat, subset = nFeature_RNA > 200 &
+                                   nFeature_RNA < 5000 &
+                                   mitoPercent < 2.5)
+merged_seurat
+
+#VlnPlot(merged_seurat_filtered, features = c("nFeature_RNA", "nCount_RNA"), ncol = 2)
 
 
 obj.list <- SplitObject(merged_seurat_filtered, split.by = 'Sample')
 
 
-obj.list$SF11082
 #Part II: SCT intergration and save files for furthur analysis
 
 obj.list <- lapply(X = obj.list, FUN = SCTransform)
@@ -72,14 +68,9 @@ anchors <- FindIntegrationAnchors(object.list = obj.list, normalization.method =
                                   anchor.features = features)
 seurat.integrated <- IntegrateData(anchorset = anchors, normalization.method = "SCT")
 
-lapply(obj.list, function(x) head(rownames(x)))
-print(anchors)
+seurat.integrated <- ScaleData(object = seurat.integrated)
+seurat.integrated <- RunPCA(object = seurat.integrated)
+seurat.integrated <- RunUMAP(object = seurat.integrated, dims = 1:50)
 
-rownames(anchors)
 
-obj.list <- IntegrateLayers(
-  object = obj.list, method = HarmonyIntegration,
-  orig.reduction = "pca", new.reduction = "harmony",
-  verbose = FALSE
-)
-
+saveRDS(seurat.integrated, file = "gbm_intergration.rds")
