@@ -6,12 +6,15 @@ import numpy as np
 from cstarpy.separation import CellStateTransition
 
 gbm_primary_tumor=pd.read_pickle('/home/jing/Phd_project/project_GBM/gbm_OUTPUT/gbm_OUTPUT_scvi_high_dim_df/gbm_primary_tumor_high_dim.pkl')
-display(gbm_primary_tumor)
+
 
 gbm_primary_normal=pd.read_pickle('/home/jing/Phd_project/project_GBM/gbm_OUTPUT/gbm_OUTPUT_scvi_high_dim_df/gbm_primary_normal_high_dim.pkl')
-display(gbm_primary_normal)
 
-display(gbm_primary_normal)
+gbm_primary_tumor.set_index('index_clean',inplace=True)
+gbm_primary_tumor.drop(columns='Tumor_Normal_annotation',inplace=True)
+
+gbm_primary_normal.set_index('index_clean',inplace=True)
+gbm_primary_normal.drop(columns='Tumor_Normal_annotation',inplace=True)
 
 cst = CellStateTransition('pnml_ptmr', gbm_primary_tumor, gbm_primary_normal)
 
