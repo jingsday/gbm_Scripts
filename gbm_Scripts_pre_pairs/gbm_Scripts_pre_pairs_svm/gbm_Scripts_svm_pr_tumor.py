@@ -12,10 +12,10 @@ gbm_primary_tumor_df=pd.read_pickle('~/Phd_project/project_GBM/gbm_OUTPUT/gbm_OU
 
 
 gbm_primary_tumor_df.drop(columns='Tumor_Normal_annotation',inplace=True)
-gbm_primary_tumor_df.set_index('index_clean')
+gbm_primary_tumor_df.set_index('index_clean',inplace=True)
 
 gbm_recurrent_tumor_df.drop(columns='Tumor_Normal_annotation',inplace=True)
-gbm_recurrent_tumor_df.set_index('index_clean')
+gbm_recurrent_tumor_df.set_index('index_clean',inplace=True)
 
 
 cst = CellStateTransition('p_r_tmr', gbm_primary_tumor_df, gbm_recurrent_tumor_df)
