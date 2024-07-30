@@ -2530,3 +2530,19 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
   recurrent_tumor.drop(columns=['Patients_id',	'Barcode',	'Tumor_Normal_annotation',	'Stage'],inplace=True)
 Documents loaded
 Cells separated
+Traceback (most recent call last):
+  File "/home/jing/Phd_project/project_GBM/gbm_Scripts/gbm_Scripts_pre_pairs/gbm_Scripts_pre_pairs_sctransform/gbm_Scripts_sct_primary_norm_tum.py", line 3, in <module>
+    import cstarpy
+ModuleNotFoundError: No module named 'cstarpy'
+/home/jing/Phd_project/project_GBM/gbm_Scripts/gbm_Scripts_pre_pairs/gbm_Scripts_pre_pairs_sctransform/gbm_Scripts_sct_primary_norm_tum.py:18: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame
+
+See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
+  primary_tumor.drop(columns=['Patients_id',	'Barcode',	'Tumor_Normal_annotation',	'Stage'],inplace=True)
+/home/jing/Phd_project/project_GBM/gbm_Scripts/gbm_Scripts_pre_pairs/gbm_Scripts_pre_pairs_sctransform/gbm_Scripts_sct_primary_norm_tum.py:19: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame
+
+See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
+  primary_normal.drop(columns=['Patients_id',	'Barcode',	'Tumor_Normal_annotation',	'Stage'],inplace=True)
+Documents loaded
+Cells separated
