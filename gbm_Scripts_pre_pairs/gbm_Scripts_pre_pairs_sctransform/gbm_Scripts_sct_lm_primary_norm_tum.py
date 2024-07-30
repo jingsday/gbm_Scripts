@@ -27,7 +27,7 @@ print('Cells separated')
 dpd_scores = cst.get_dpd()
 
 norm_s_df = pd.DataFrame(np.stack([cst.n, cst.s], axis=1), index=cst.svm_input.data.columns, columns=["n", "s"])
-
+norm_s_df['n']
 
 pd.to_pickle(dpd_scores,"/home/jing/Phd_project/project_GBM/gbm_OUTPUT/gbm_OUTPUT_svm/gbm_OUTPUT_svm_sctranform/gbm_OUTPUT_sct_P_dpd_lm_norm_tum.pkl")
 pd.to_pickle(norm_s_df,"/home/jing/Phd_project/project_GBM/gbm_OUTPUT/gbm_OUTPUT_svm/gbm_OUTPUT_svm_sctranform/gbm_OUTPUT_sct_P_stv_lm_norm_tum.pkl")
