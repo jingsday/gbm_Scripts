@@ -1,0 +1,86 @@
+Traceback (most recent call last):
+  File "/home/jing/Phd_project/project_GBM/gbm_Scripts/gbm_Scripts_pre_pairs/gbm_Scripts_pre_pairs_svm/gbm_Scripts_svm_primary_norm_tumor.py", line 822, in <module>
+    "execution_count": null,
+NameError: name 'null' is not defined
+Traceback (most recent call last):
+  File "/home/jing/Phd_project/project_GBM/gbm_Scripts/gbm_Scripts_pre_pairs/gbm_Scripts_pre_pairs_svm/gbm_Scripts_svm_primary_norm_tumor.py", line 822, in <module>
+    "execution_count": null,
+                       ^^^^
+NameError: name 'null' is not defined
+Traceback (most recent call last):
+  File "/home/jing/Phd_project/project_GBM/gbm_Scripts/gbm_Scripts_pre_pairs/gbm_Scripts_pre_pairs_svm/gbm_Scripts_svm_primary_norm_tumor.py", line 9, in <module>
+    display(gbm_primary_tumor)
+    ^^^^^^^
+NameError: name 'display' is not defined
+Traceback (most recent call last):
+  File "/home/jing/Phd_project/project_GBM/gbm_Scripts/gbm_Scripts_pre_pairs/gbm_Scripts_pre_pairs_svm/gbm_Scripts_svm_primary_norm_tumor.py", line 14, in <module>
+    cst = CellStateTransition('pnml_ptmr', gbm_primary_tumor, gbm_primary_normal)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<string>", line 6, in __init__
+  File "/home/jing/cstarpy-main/cstarpy/separation/svm.py", line 93, in __post_init__
+    self._clf.fit(*self.svm_input)
+  File "/home/jing/miniforge3/envs/cstar/lib/python3.12/site-packages/sklearn/base.py", line 1473, in wrapper
+    return fit_method(estimator, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jing/miniforge3/envs/cstar/lib/python3.12/site-packages/sklearn/svm/_classes.py", line 302, in fit
+    X, y = self._validate_data(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/jing/miniforge3/envs/cstar/lib/python3.12/site-packages/sklearn/base.py", line 650, in _validate_data
+    X, y = check_X_y(X, y, **check_params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jing/miniforge3/envs/cstar/lib/python3.12/site-packages/sklearn/utils/validation.py", line 1301, in check_X_y
+    X = check_array(
+        ^^^^^^^^^^^^
+  File "/home/jing/miniforge3/envs/cstar/lib/python3.12/site-packages/sklearn/utils/validation.py", line 1012, in check_array
+    array = _asarray_with_order(array, order=order, dtype=dtype, xp=xp)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jing/miniforge3/envs/cstar/lib/python3.12/site-packages/sklearn/utils/_array_api.py", line 751, in _asarray_with_order
+    array = numpy.asarray(array, order=order, dtype=dtype)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jing/miniforge3/envs/cstar/lib/python3.12/site-packages/pandas/core/generic.py", line 2153, in __array__
+    arr = np.asarray(values, dtype=dtype)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: could not convert string to float: 'GSM5319518_AAACCCAAGGGATCAC-1'
+Traceback (most recent call last):
+  File "/home/jing/Phd_project/project_GBM/gbm_Scripts/gbm_Scripts_pre_pairs/gbm_Scripts_pre_pairs_svm/gbm_Scripts_svm_primary_norm_tumor.py", line 17, in <module>
+    gbm_primary_normal.set_index('index_clean',inplace=True)
+  File "/home/jing/miniforge3/envs/cstar/lib/python3.12/site-packages/pandas/core/frame.py", line 6122, in set_index
+    raise KeyError(f"None of {missing} are in the columns")
+KeyError: "None of ['index_clean'] are in the columns"
+/home/jing/miniforge3/envs/cstar/lib/python3.12/site-packages/sklearn/svm/_base.py:1235: ConvergenceWarning: Liblinear failed to converge, increase the number of iterations.
+  warnings.warn(
+0.0003053828752216417
+Traceback (most recent call last):
+  File "/home/jing/Phd_project/project_GBM/gbm_Scripts/gbm_Scripts_pre_pairs/gbm_Scripts_pre_pairs_svm/gbm_Scripts_svm_pr_tumor.py", line 4, in <module>
+    import cstarpy
+ModuleNotFoundError: No module named 'cstarpy'
+Traceback (most recent call last):
+  File "/home/jing/Phd_project/project_GBM/gbm_Scripts/gbm_Scripts_pre_pairs/gbm_Scripts_pre_pairs_svm/gbm_Scripts_svm_pr_tumor.py", line 21, in <module>
+    cst = CellStateTransition('p_r_tmr', gbm_primary_tumor_df, gbm_recurrent_tumor_df)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<string>", line 6, in __init__
+  File "/home/jing/cstarpy-main/cstarpy/separation/svm.py", line 93, in __post_init__
+    self._clf.fit(*self.svm_input)
+  File "/home/jing/miniforge3/envs/cstar/lib/python3.12/site-packages/sklearn/base.py", line 1473, in wrapper
+    return fit_method(estimator, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jing/miniforge3/envs/cstar/lib/python3.12/site-packages/sklearn/svm/_classes.py", line 302, in fit
+    X, y = self._validate_data(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/jing/miniforge3/envs/cstar/lib/python3.12/site-packages/sklearn/base.py", line 650, in _validate_data
+    X, y = check_X_y(X, y, **check_params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jing/miniforge3/envs/cstar/lib/python3.12/site-packages/sklearn/utils/validation.py", line 1301, in check_X_y
+    X = check_array(
+        ^^^^^^^^^^^^
+  File "/home/jing/miniforge3/envs/cstar/lib/python3.12/site-packages/sklearn/utils/validation.py", line 1012, in check_array
+    array = _asarray_with_order(array, order=order, dtype=dtype, xp=xp)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jing/miniforge3/envs/cstar/lib/python3.12/site-packages/sklearn/utils/_array_api.py", line 751, in _asarray_with_order
+    array = numpy.asarray(array, order=order, dtype=dtype)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jing/miniforge3/envs/cstar/lib/python3.12/site-packages/pandas/core/generic.py", line 2153, in __array__
+    arr = np.asarray(values, dtype=dtype)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: could not convert string to float: 'GSM5319518_AAACCCAAGGGATCAC-1'
+Cells separated
