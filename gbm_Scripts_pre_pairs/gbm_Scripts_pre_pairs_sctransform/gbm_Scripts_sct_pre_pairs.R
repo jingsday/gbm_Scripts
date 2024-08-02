@@ -5,7 +5,7 @@ library(gridExtra)
 library(Matrix)
 library(stringr)
 
-wkdir <- '/home/jing/Phd_project/project_GBM/gbm_DATA/gbm_DATA_GSE174554/gbm_DATA_scRNA_atlas/'
+wkdir <- '/home/jyang/Phd_project/project_GBM/gbm_DATA/gbm_DATA_GSE174554/gbm_DATA_scRNA_atlas'
 
 names_list <- c('GSM5319518_SF2777','GSM5319548_SF2979','GSM5319519_SF2990',
                 'GSM5319549_SF3073','GSM5319520_SF3076','GSM5319550_SF3243',
@@ -73,4 +73,4 @@ seurat.integrated <- RunPCA(object = seurat.integrated)
 seurat.integrated <- RunUMAP(object = seurat.integrated, dims = 1:50)
 
 
-saveRDS(seurat.integrated, file = "gbm_intergration.rds")
+saveRDS(seurat.integrated, file = "/home/jyang/Phd_project/project_GBM/gbm_OUTPUT/gbm_intergration.rds")
