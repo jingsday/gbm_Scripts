@@ -14,8 +14,9 @@ clin <- clin_raw[clin_raw$PRS_type =="Primary",]
 
 table(clin$IDH_mutation_status)
 
-clin <- clin[clin$IDH_mutation_status %in% c('Mutant'),]
+clin <- clin[clin$IDH_mutation_status %in% c('Wildtype'),]
 
+table(clin_raw$IDH_mutation_status)
 
 RNA_raw <- read.delim("CGGA.mRNAseq_693.RSEM-genes.20200506.txt",check.names = FALSE)
 RNA_raw[is.na(RNA_raw)] <- 0
@@ -45,10 +46,10 @@ surv_summary <- summary(fit)
 median_surv <- summary(fit)$table["median"]
 median_surv
 
-p <- ggsurvplot(fit, data = clin, xlab = "Days", ylab = "Overall survival", 
+ggsurvplot(fit, data = clin, xlab = "Days", ylab = "Overall survival", 
                 surv.median.line = 'hv', risk.table = TRUE)
 
-# Customize the x-axis to include the value 13.61 along with other specified breaks
+p# Customize the x-axis to include the value 13.61 along with other specified breaks
 p$plot <- p$plot + 
   scale_x_continuous(breaks = c(0, 13.78, 20, 40, 60, 80))
 
@@ -122,7 +123,7 @@ ggforest(fit.coxph, data = path_df)
 
 paste(names(fit.coxph$coefficients[order(fit.coxph$coefficients,decreasing = TRUE)]),collapse = '+')
 
-fit.coxph <- coxph(surv_obj ~ `JAK-STAT`+Trail+MAPK+NFkB+Hypoxia+TGFb+EGFR+p53+WNT+PI3K+VEGF+Androgen+Estrogen+TNFa,data = path_df)
+fit.coxph <- coxph(surv_obj ~ TNFa+Hypoxia+`JAK-STAT`+PI3K+TGFb+VEGF+MAPK+Androgen+Estrogen+EGFR+p53+Trail+WNT+NFkB,data = path_df)
 
 ggforest(fit.coxph, data = path_df)
 
@@ -141,7 +142,8 @@ corrplot(cor(MAPK_df), type = "upper", order = "hclust",tl.col = "black", tl.srt
 # now creating object without zero times
 clin_filt <- clin[clin$OS > 0,]
 RNA_filt <- RNA[clin$OS > 0,]
-path_filt <- path_df[clin$OS > 0,]
+path_filt <- path_df[!is.na(clin$OS) & clin$OS > 0, ]
+
 # create a survival object consisting of times & censoring
 surv_filt <- Surv(time = clin_filt$OS, 
                  event = clin_filt$Censor..alive.0..dead.1.=="1")
@@ -152,11 +154,12 @@ paste(which(is.na(surv_filt)),collapse = ' , ')
 
 RNA_filt[is.na(RNA_filt)] <- 0
 
-surv_filt <-surv_filt[-c(6 , 9 , 87 , 144 , 166 , 167 , 169 , 179 , 182 , 185 , 204),]
-RNA_filt <- RNA_filt[-c(6 , 9 , 87 , 144 , 166 , 167 , 169 , 179 , 182 , 185 , 204),]
+surv_filt <-surv_filt[-c(68 , 95 , 97 , 98 , 103),]
+RNA_filt <- RNA_filt[-c(68 , 95 , 97 , 98 , 103),]
 
-clin_filt<-clin_filt[-c(6 , 9 , 87 , 144 , 166 , 167 , 169 , 179 , 182 , 185 , 204),]
+clin_filt<-clin_filt[-c(68 , 95 , 97 , 98 , 103),]
 
+path_filt<-dim(path_filt[rownames(path_filt) %in% rownames(clin_filt),])
 
 genes_info <- read.delim('/Users/lidiayung/PhD_project/project_UCD_blca/blca_DATA/blca_DATA_LINCS/geneinfo_beta.txt')
 genes_lm <- genes_info[genes_info$feature_space %in%'landmark', ]$gene_symbol
@@ -172,12 +175,12 @@ library("penalized")
 fit_glm <- glmnet(RNA_filt,surv_filt,family="cox") # , alpha = 1, standardize = TRUE, maxit = 1000
 print(fit_glm)
 
-cvfit <- cv.glmnet(data.matrix(RNA_filt),surv_filt,family="cox",type.measure = "C")
+cvfit <- cv.glmnet(data.matrix(RNA_filt),surv_filt,family="cox")
 plot(cvfit)
 
-#89  119 70.15 0.004156
+#89  171 64.01 0.00381
 # analysing results
-cfs = coef(fit_glm,s= 0.004156)
+cfs = coef(fit_glm,s= 0.00381)
 
 meaning_coefs = rownames(cfs)[cfs[,1]!= 0]
 meaning_vals = cfs[cfs[,1]!=0,]
@@ -189,7 +192,7 @@ sorted_coef_abs <- coef_data[order(-coef_data$coefficient,decreasing = FALSE), ]
 sorted_coef_abs
 top_100 <- tail(sorted_coef_abs,15)
 list(top_100$variable)
-write.csv(meaning_vals,file='/Users/lidiayung/PhD_project/project_GBM/gbm_OUTPUT/gbm_OUTPUT_cgga/gbm_cgga_survival_coeffs_glmnet.csv')
+#write.csv(meaning_vals,file='/Users/lidiayung/PhD_project/project_GBM/gbm_OUTPUT/gbm_OUTPUT_cgga/gbm_cgga_survival_coeffs_glmnet.csv')
 print(paste(meaning_coefs,collapse=" + "))
 # cutting to find most important
 ncut = 15
@@ -256,12 +259,11 @@ surv_obj_filt <- Surv(time = clin_filt$OS,
                  event = clin_filt$Censor..alive.0..dead.1.=="1")
 
 
-fit <- survfit(surv_obj_filt ~ outcome , data = clin_filt)
+fit <- survfit(surv_obj_filt ~ MGMTp_methylation_status , data = clin_filt)
 ggsurvplot(fit, data = clin_filt, xlab = "Days", ylab = "Overall survival",pval = TRUE,
            risk.table =TRUE)
 
-
-fit.coxph <- coxph(surv_obj_filt ~ Gender + Age +outcome, data = clin_filt)
+fit.coxph <- coxph(surv_obj_filt ~ Gender + Age+MGMTp_methylation_status +outcome, data = clin_filt)
 ggforest(fit.coxph, data = clin_filt)
 
 # Create bar plot
@@ -271,30 +273,41 @@ ggplot(coef_data, aes(x = reorder(variable, coefficient), y = coefficient)) +
   labs(title = "Coefficients from glmnet Model", 
        x = "Genes", y = "Coefficient") +
   theme_minimal()
-which(is.na(path_filt))
-dim(path_filt)
-surv_obj
+
+path_filt
 
 # glmnet over progeny
-fit_glm <- glmnet(path_filt,surv_obj,family="cox") # , alpha = 1, standardize = TRUE, maxit = 1000
+fit_glm <- glmnet(path_filt,surv_obj_filt,family="cox") # , alpha = 1, standardize = TRUE, maxit = 1000
 print(fit_glm)
 
 cv_fit <- cv.glmnet(data.matrix(path_filt),surv_filt,family="cox",type.measure = "C")
 plot(cv_fit)
-# analysing results
-cfs = coef(fit_glm,s=0.011020)
+# analysing results 9 7.03 0.007784
+cfs = coef(fit_glm,s=0.007784)
 meaning_coefs = rownames(cfs)[cfs[,1]!= 0]
 meaning_vals = cfs[cfs[,1]!=0,]
-write.csv(meaning_vals,file='gbm_OUTPUT_glm_survival_coeffs.csv')
-gbmprint(paste(meaning_coefs,collapse=" + "))
+meaning_vals
+#write.csv(meaning_vals,file='gbm_OUTPUT_glm_survival_coeffs.csv')
+print(paste(meaning_coefs,collapse=" + "))
 # cutting to find most important
 ncut = 10
 vals_surv = sort(abs(meaning_vals),decreasing = TRUE)[1:ncut]
 print(paste(names(vals_surv),collapse=" + "))
 # if we want to run coxph we have to copy-paste the string
-fit.coxph <- coxph(surv_obj ~ EGFR + Trail + Estrogen + Androgen + VEGF + PI3K + `JAK-STAT`, 
+fit.coxph <- coxph(surv_obj ~ Estrogen + WNT + p53 + Hypoxia + VEGF + Trail + NFkB + EGFR+`JAK-STAT`, 
                    data = path_df)
 ggforest(fit.coxph, data = path_df)
+
+coef_data <-data.frame(variable=meaning_coefs,coefficient=meaning_vals)
+
+coef_data
+# Create bar plot
+ggplot(coef_data, aes(x = reorder(variable, coefficient), y = coefficient)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  coord_flip() +  # Rotate axis labels
+  labs(title = "Coefficients from glmnet Model", 
+       x = "Pathways", y = "Coefficient") +
+  theme_minimal()
 
 
 # plotting Kaplan-Mayer curves
