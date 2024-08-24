@@ -159,7 +159,7 @@ RNA_filt <- RNA_filt[-c(68 , 95 , 97 , 98 , 103),]
 
 clin_filt<-clin_filt[-c(68 , 95 , 97 , 98 , 103),]
 
-path_filt<-dim(path_filt[rownames(path_filt) %in% rownames(clin_filt),])
+path_filt<-path_filt[rownames(path_filt) %in% rownames(clin_filt),]
 
 genes_info <- read.delim('/Users/lidiayung/PhD_project/project_UCD_blca/blca_DATA/blca_DATA_LINCS/geneinfo_beta.txt')
 genes_lm <- genes_info[genes_info$feature_space %in%'landmark', ]$gene_symbol
@@ -192,7 +192,7 @@ sorted_coef_abs <- coef_data[order(-coef_data$coefficient,decreasing = FALSE), ]
 sorted_coef_abs
 top_100 <- tail(sorted_coef_abs,15)
 list(top_100$variable)
-#write.csv(meaning_vals,file='/Users/lidiayung/PhD_project/project_GBM/gbm_OUTPUT/gbm_OUTPUT_cgga/gbm_cgga_survival_coeffs_glmnet.csv')
+#write.csv(meaning_vals,file='/Users/lidiayung/PhD_project/project_GBM/gbm_OUTPUT/gbm_OUTPUT_cgga/gbm_cgga_wd_survival_coeffs_glmnet.csv')
 print(paste(meaning_coefs,collapse=" + "))
 # cutting to find most important
 ncut = 15
@@ -259,13 +259,13 @@ surv_obj_filt <- Surv(time = clin_filt$OS,
                  event = clin_filt$Censor..alive.0..dead.1.=="1")
 
 
-fit <- survfit(surv_obj_filt ~ MGMTp_methylation_status , data = clin_filt)
+fit <- survfit(surv_obj_filt ~ outcome , data = clin_filt)
 ggsurvplot(fit, data = clin_filt, xlab = "Days", ylab = "Overall survival",pval = TRUE,
            risk.table =TRUE)
 
 fit.coxph <- coxph(surv_obj_filt ~ Gender + Age+MGMTp_methylation_status +outcome, data = clin_filt)
-ggforest(fit.coxph, data = clin_filt)
-
+p<- ggforest(fit.coxph, data = clin_filt)
+ggsave(p, file='/Users/lidiayung/PhD_project/project_GBM/gbm_OUTPUT/gbm_OUTPUT_cgga/gbm_cgga_wd_hazard_r.svg')
 # Create bar plot
 ggplot(coef_data, aes(x = reorder(variable, coefficient), y = coefficient)) +
   geom_bar(stat = "identity", fill = "skyblue") +
@@ -274,7 +274,6 @@ ggplot(coef_data, aes(x = reorder(variable, coefficient), y = coefficient)) +
        x = "Genes", y = "Coefficient") +
   theme_minimal()
 
-path_filt
 
 # glmnet over progeny
 fit_glm <- glmnet(path_filt,surv_obj_filt,family="cox") # , alpha = 1, standardize = TRUE, maxit = 1000
@@ -283,7 +282,7 @@ print(fit_glm)
 cv_fit <- cv.glmnet(data.matrix(path_filt),surv_filt,family="cox",type.measure = "C")
 plot(cv_fit)
 # analysing results 9 7.03 0.007784
-cfs = coef(fit_glm,s=0.007784)
+cfs = coef(fit_glm,s=0.003499)
 meaning_coefs = rownames(cfs)[cfs[,1]!= 0]
 meaning_vals = cfs[cfs[,1]!=0,]
 meaning_vals
@@ -294,7 +293,7 @@ ncut = 10
 vals_surv = sort(abs(meaning_vals),decreasing = TRUE)[1:ncut]
 print(paste(names(vals_surv),collapse=" + "))
 # if we want to run coxph we have to copy-paste the string
-fit.coxph <- coxph(surv_obj ~ Estrogen + WNT + p53 + Hypoxia + VEGF + Trail + NFkB + EGFR+`JAK-STAT`, 
+fit.coxph <- coxph(surv_obj ~ Hypoxia + Trail + WNT + `JAK-STAT` + p53 + TNFa + Estrogen + EGFR + PI3K + TGFb, 
                    data = path_df)
 ggforest(fit.coxph, data = path_df)
 
@@ -394,3 +393,5 @@ plot(jk.obj)
 
 fit.coxph <- coxph(surv_filt ~ TRIM67 + RASA1 + RHOF + NCAPD3 + NEU2 + ARNTL2 + CDK6, data = RNA_filt)
 ggforest(fit.coxph, data = RNA_filt)
+
+

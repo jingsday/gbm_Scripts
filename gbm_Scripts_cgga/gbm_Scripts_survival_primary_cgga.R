@@ -14,7 +14,7 @@ clin <- clin_raw[clin_raw$PRS_type =="Primary",]
 
 table(clin$IDH_mutation_status)
 
-dim(clin[clin$IDH_mutation_status=='Mutant',])
+clin <- clin[clin$IDH_mutation_status %in% c('Mutant'),]
 
 
 RNA_raw <- read.delim("CGGA.mRNAseq_693.RSEM-genes.20200506.txt",check.names = FALSE)
@@ -28,10 +28,12 @@ RNA <- as.data.frame(t(RNA_raw[-1]))
 row.names(clin) <- clin$CGGA_ID
 # Align clinical data:
 #clin <- clin_raw[row.names(clin_raw)%in% str_sub(row.names(RNA), end = -4),]
-RNA_test <- RNA[str_sub(row.names(RNA)) %in% row.names(clin), ]
+RNA <- RNA[str_sub(row.names(RNA)) %in% row.names(clin), ]
+RNA <- apply(RNA, c(1, 2), function(value) log2(value + 1))
+RNA <- as.data.frame(scale(RNA, center = TRUE, scale = TRUE))
 
-surv_obj <- Surv(time = clin$OS_MONTHS, 
-                 event = clin$OS_STATUS=="1:DECEASED")
+surv_obj <- Surv(time = clin$OS, 
+                 event = clin$Censor..alive.0..dead.1.=="1")
 
 #surv_obj 
 fit <- survfit(surv_obj ~ 1, data = clin)
@@ -72,8 +74,8 @@ ggsurvplot(fit, data = clin,
 
 
 #primary and recurrent
-fit <- survfit(surv_obj ~ SEX , data = clin)
-ggsurvplot(fit, data = clin, xlab = "Month", ylab = "Overall survival",pval = TRUE,
+fit <- survfit(surv_obj ~ Gender , data = clin)
+ggsurvplot(fit, data = clin, xlab = "Days", ylab = "Overall survival",pval = TRUE,
            risk.table =TRUE)
 
 
@@ -88,10 +90,8 @@ fit.coxph <- coxph(surv_obj ~ KSR1 + KSR2 + IQGAP1 + GAB1 + GAB2,
                    data = RNA)
 ggforest(fit.coxph, data = RNA)
 
-fit.coxph <- coxph(surv_obj ~ SEX + AGE , data = clin)
+fit.coxph <- coxph(surv_obj ~ Gender + Age , data = clin)
 ggforest(fit.coxph, data = clin)
-
-### Remove n_recurrent=7 ###
 
 library(progeny)
 zscores = as.matrix(t(RNA))
@@ -138,20 +138,28 @@ MAPK_df = cbind(MAPK = path_df$MAPK, PI3K = path_df$PI3K,
 corrplot(cor(MAPK_df), type = "upper", order = "hclust",tl.col = "black", tl.srt = 45)
 
 # now creating object without zero times
-clin_filt <- clin[clin$OS_MONTHS > 0,]
-RNA_filt <- RNA[clin$OS_MONTHS > 0,]
-path_filt <- path_df[clin$OS_MONTHS > 0,]
+clin_filt <- clin[clin$OS > 0,]
+RNA_filt <- RNA[clin$OS > 0,]
+path_filt <- path_df[clin$OS > 0,]
 # create a survival object consisting of times & censoring
-surv_filt <- Surv(time = clin_filt$OS_MONTHS, 
-                 event = clin_filt$OS_STATUS=="1:DECEASED")
+surv_filt <- Surv(time = clin_filt$OS, 
+                 event = clin_filt$Censor..alive.0..dead.1.=="1")
 fit <- survfit(surv_filt ~ 1, data = clin_filt)
-ggsurvplot(fit, data = clin_filt, xlab = "Month", ylab = "Overall survival")
+ggsurvplot(fit, data = clin_filt, xlab = "Day", ylab = "Overall survival")
 which(is.na(surv_filt))
 RNA_filt[is.na(RNA_filt)] <- 0
-surv_filt <-surv_filt[-c(143),]
-RNA_filt <- RNA_filt[-c(143),]
+paste(which(is.na(surv_filt)),collapse = ' , ')
+surv_filt <-surv_filt[-c(6 , 9 , 87 , 144 , 166 , 167 , 169 , 179 , 182 , 185 , 204),]
+surv_filt
+RNA_filt <- RNA_filt[-c(6 , 9 , 87 , 144 , 166 , 167 , 169 , 179 , 182 , 185 , 204),]
 
-clin_filt<-clin_filt[-c(143),]
+genes_info <- read.delim('/Users/lidiayung/PhD_project/project_UCD_blca/blca_DATA/blca_DATA_LINCS/geneinfo_beta.txt')
+
+genes_lm <- genes_info[genes_info$feature_space %in%'landmark', ]$gene_symbol
+
+RNA_filt <- RNA_filt[colnames(RNA_filt) %in%genes_lm]
+
+clin_filt<-clin_filt[-c(6 , 9 , 87 , 144 , 166 , 167 , 169 , 179 , 182 , 185 , 204),]
 
 
 # glmnet
@@ -165,12 +173,10 @@ print(fit_glm)
 cvfit <- cv.glmnet(data.matrix(RNA_filt),surv_filt,family="cox",type.measure = "C")
 plot(cvfit)
 
-#144 74.63 0.009092
+#121 72.43 0.003615
 # analysing results
-cfs = coef(fit_glm,s= 0.051830)
+cfs = coef(fit_glm,s=  0.003615)
 
-cvfit <- cv.glmnet(data.matrix(RNA_filt),surv_filt,family="cox",type.measure = "C")
-plot(cvfit)
 meaning_coefs = rownames(cfs)[cfs[,1]!= 0]
 meaning_vals = cfs[cfs[,1]!=0,]
 meaning_vals
@@ -181,14 +187,14 @@ sorted_coef_abs <- coef_data[order(-coef_data$coefficient,decreasing = FALSE), ]
 sorted_coef_abs
 top_100 <- tail(sorted_coef_abs,15)
 list(top_100$variable)
-#write.csv(meaning_vals,file='/Users/lidiayung/project/project_gbm/gbm_OUTPUT/gbm_OUTPUT_tcga/gbm_survival_coeffs_glmnet.csv')
+#write.csv(meaning_vals,file='/Users/lidiayung/PhD_project/project_GBM/gbm_OUTPUT/gbm_OUTPUT_cgga/gbm_cgga_survival_coeffs_glmnet.csv')
 print(paste(meaning_coefs,collapse=" + "))
 # cutting to find most important
 ncut = 15
 vals_surv = sort(abs(meaning_vals))[1:ncut]
 print(paste(top_100$variable,collapse=" + "))
 # if we want to run coxph we have to copy-paste the string
-fit.coxph <- coxph(surv_filt ~ EGFR + Estrogen + Androgen + VEGF + PI3K + `JAK-STAT`, data = RNA_filt)
+fit.coxph <- coxph(surv_filt ~ SPDEF + LYN + NMT1 + PRSS23 + KIT + DFFA + SIRT3 + ARL4C + ALDH7A1 + MEST + LAMA3 + INPP4B + RRP1B + SERPINE1 + ABCF1, data = RNA_filt)
 ggforest(fit.coxph, data = RNA_filt)
 
 
@@ -208,20 +214,19 @@ ggplot(top_100, aes(x = reorder(variable, coefficient), y = coefficient)) +
 
 
 #
-rna_raw <- read.delim("data_mrna_seq_v2_rsem.txt",check.names = FALSE)
-
+rna_raw <- read.delim("CGGA.mRNAseq_693.RSEM-genes.20200506.txt",check.names = FALSE)
 
 rna_raw[is.na(rna_raw)] <- 0
-rna_raw <- rna_raw[rna_raw$Hugo_Symbol!='',]
-rna_raw <- rna_raw[!duplicated(rna_raw$Hugo_Symbol),]
-rownames(rna_raw) <- rna_raw$Hugo_Symbol
-rna <- as.data.frame(t(rna_raw[-1:-2]))
+rna_raw <- rna_raw[rna_raw$Gene_Name!='',]
+rna_raw <- rna_raw[!duplicated(rna_raw$Gene_Name),]
+rownames(rna_raw) <- rna_raw$Gene_Name
+rna <- as.data.frame(t(rna_raw[-1]))
 
 #retrieve RNAs of interest
-rna <- rna[str_sub(row.names(rna), end = -4) %in% row.names(clin_filt), ]
+rna <- rna[str_sub(row.names(rna)) %in% row.names(clin_filt), ]
 #rna <- rna[-143,]
 
-
+clin_filt$Censor..alive.0..dead.1.
 max(rna)
 min(rna)
 
@@ -232,32 +237,31 @@ max(rna_log2) #19.96911
 
 
 #dot product
-rna_log2_subset <- rna_log2[, coef_data$variable]
-coef_data_subset <-coef_data[,-1]
 
-result <- rna_log2_subset %*% coef_data_subset
+coef_data
 
-clin_filt$DPD_prognosis <- result[row.names(clin_filt) %in% str_sub(row.names(result), end = -4), ]
+result <- rna_log2 %*% coef_data_subset$DPD_survival
+
+clin_filt$DPD_prognosis <- result[row.names(clin_filt) %in% str_sub(row.names(result)), ]
 
 hist(clin_filt$DPD_prognosis)
 #assign to positive,negative (I only have positive and decided to select a positive threshold)
-clin_filt$outcome <- ifelse(clin_filt$DPD_prognosis > 0, "Positive",
+clin_filt$outcome <- ifelse(clin_filt$DPD_prognosis > -25, "Positive",
                        ifelse(clin_filt$DPD_prognosis == 0, "0", "Negative"))
 
-hist(clin_filt$DPD_prognosis)
-
-
 ### hazard ratio
-surv_obj_filt <- Surv(time = clin_filt$OS_MONTHS, 
-                 event = clin_filt$OS_STATUS=="1:DECEASED")
+surv_obj_filt <- Surv(time = clin_filt$OS, 
+                 event = clin_filt$Censor..alive.0..dead.1.=="1")
 
 
 fit <- survfit(surv_obj_filt ~ outcome , data = clin_filt)
-ggsurvplot(fit, data = clin_filt, xlab = "Month", ylab = "Overall survival",pval = TRUE,
+ggsurvplot(fit, data = clin_filt, xlab = "Day", ylab = "Overall survival",pval = TRUE,
            risk.table =TRUE)
 
+clin_filt$Gender <- trimws(clin_filt$Gender)
 
-fit.coxph <- coxph(surv_obj_filt ~ SEX + AGE +outcome, data = clin_filt)
+table(clin_filt$MGMTp_methylation_status)
+fit.coxph <- coxph(surv_obj_filt ~ Gender+Age+MGMTp_methylation_status + outcome, data = clin_filt)
 ggforest(fit.coxph, data = clin_filt)
 
 # Create bar plot
