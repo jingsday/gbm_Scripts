@@ -1,12 +1,10 @@
 library(Seurat)
 library(ggplot2)
-library(tidyverse)
+library(tidyr)
 library(gridExtra)
 library(Matrix)
 library(stringr)
 
-wkdir <- '/home/jyang/Phd_project/project_GBM/gbm_DATA/gbm_DATA_GSE174554/gbm_DATA_scRNA_atlas'
-library(glmGamPoi)
 wkdir <- '/home/jing/Phd_project/project_GBM/gbm_DATA/gbm_DATA_GSE174554/gbm_DATA_scRNA_atlas/'
 
 names_list <- c('GSM5319518_SF2777','GSM5319548_SF2979','GSM5319519_SF2990',
@@ -75,5 +73,4 @@ seurat.integrated <- RunPCA(object = seurat.integrated)
 seurat.integrated <- RunUMAP(object = seurat.integrated, dims = 1:50)
 
 
-saveRDS(seurat.integrated, file = "/home/jyang/Phd_project/project_GBM/gbm_OUTPUT/gbm_intergration.rds")
-saveRDS(seurat.integrated, file = "/home/jing/Phd_project/project_GBM/gbm_OUTPUT/gbm_OUTPUT_sctransform/gbm_intergration.rds")
+saveRDS(seurat.integrated, file = "~/Phd_project/project_GBM/gbm_OUTPUT/gbm_OUTPUT_sctransform/gbm_intergration.rds")
