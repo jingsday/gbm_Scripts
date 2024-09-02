@@ -1,6 +1,6 @@
 library(Seurat)
 library(ggplot2)
-library(tidyverse)
+library(tidyr)
 library(gridExtra)
 library(Matrix)
 library(stringr)
@@ -87,7 +87,7 @@ merged_seurat@meta.data <- separate(merged_seurat@meta.data, col = 'sample', int
 merged_seurat$mitoPercent <- PercentageFeatureSet(merged_seurat, pattern='^Mt-')
 
 VlnPlot(merged_seurat, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
-ggsave('features.jpg')
+#ggsave('features.jpg')
 
 
 merged_seurat_filtered <- subset(merged_seurat, subset = nFeature_RNA > 200 &
@@ -109,4 +109,14 @@ anchors <- FindIntegrationAnchors(object.list = obj.list, normalization.method =
                                   anchor.features = features)
 seurat.integrated <- IntegrateData(anchorset = anchors, normalization.method = "SCT")
 
-seurat.integrated
+saveRDS(seurat.integrated,file='~/Phd_project/project_GBM/gbm_OUTPUT/gbm_OUTPUT_sctransform/gbm_OUTPUT_intergration.rds')
+
+
+seurat.integrated <- ScaleData(object = seurat.integrated)
+seurat.integrated <- RunPCA(object = seurat.integrated)
+seurat.integrated <- RunUMAP(object = seurat.integrated, dims = 1:50)
+
+seurat.integrated <- FindNeighbors(seurat.integrated, dims = 1:30, verbose = FALSE)
+seurat.integrated <- FindClusters(seurat.integrated, verbose = FALSE)
+DimPlot(seurat.integrated, label = TRUE)
+head(seurat.integrated@meta.data)
