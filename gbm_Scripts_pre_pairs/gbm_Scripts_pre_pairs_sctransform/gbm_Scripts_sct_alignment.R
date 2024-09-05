@@ -5,7 +5,10 @@ library(gridExtra)
 library(Matrix)
 library(stringr)
 
-wkdir <- '/home/jing/Phd_project/project_GBM/gbm_DATA/gbm_DATA_GSE174554/gbm_DATA_scRNA_atlas/'
+library(tidyverse)
+library(DoubletFinder)
+
+wkdir <- '~/Phd_project/project_GBM/gbm_DATA/gbm_DATA_GSE174554/gbm_DATA_scRNA_atlas/'
 
 names_list <- c('GSM5319518_SF2777','GSM5319548_SF2979','GSM5319519_SF2990',
                 'GSM5319549_SF3073','GSM5319520_SF3076','GSM5319550_SF3243',
@@ -24,6 +27,62 @@ for (name in names_list) {
 }
 
 ls()
+
+#Doublet 
+SF11082.filtered <- NormalizeData(object = SF11082)
+SF11082.filtered <- FindVariableFeatures(object = SF11082.filtered)
+SF11082.filtered <- ScaleData(object = SF11082.filtered)
+SF11082.filtered <- RunPCA(object = SF11082.filtered)
+ElbowPlot(SF11082.filtered)
+SF11082.filtered <- FindNeighbors(object = SF11082.filtered, dims = 1:20)
+SF11082.filtered <- FindClusters(object = SF11082.filtered)
+SF11082.filtered <- RunUMAP(object = SF11082.filtered, dims = 1:20)
+
+
+
+## pK Identification (no ground-truth) ---------------------------------------------------------------------------------------
+sweep.res.list_SF11082 <- paramSweep(SF11082.filtered, PCs = 1:20, sct = FALSE)
+sweep.stats_SF11082 <- summarizeSweep(sweep.res.list_SF11082, GT = FALSE)
+bcmvn_SF11082 <- find.pK(sweep.stats_SF11082)
+
+p1 <- ggplot(bcmvn_SF11082, aes(pK, BCmetric, group = 1)) +
+  geom_point() +
+  geom_line()
+
+outdir <- '~/Phd_project/project_GBM/gbm_Scripts/gbm_Scripts_pre_pairs/gbm_Scripts_pre_pairs_sctransform/00_output_doublet/'
+ggsave(filename=file.path(outdir,'doublet_SF11082.png'),plot=p1,width=15)
+
+pK <- bcmvn_SF11082 %>% # select the pK that corresponds to max bcmvn to optimize doublet detection
+  filter(BCmetric == max(BCmetric)) %>%
+  select(pK) 
+pK <- as.numeric(as.character(pK[[1]]))
+
+
+## Homotypic Doublet Proportion Estimate -------------------------------------------------------------------------------------
+annotations <- SF11082.filtered@meta.data$seurat_clusters
+homotypic.prop <- modelHomotypic(annotations)           ## ex: annotations <- seu_kidney@meta.data$ClusteringResults
+nExp_poi <- round(0.076*nrow(SF11082.filtered@meta.data))  ## Assuming 7.5% doublet formation rate - tailor for your dataset
+nExp_poi.adj <- round(nExp_poi*(1-homotypic.prop))
+
+
+# run doubletFinder 
+SF11082.seurat.filtered <- doubletFinder_v3(SF11082.seurat.filtered, 
+                                     PCs = 1:20, 
+                                     pN = 0.25, 
+                                     pK = pK, 
+                                     nExp = nExp_poi.adj,
+                                     reuse.pANN = FALSE, sct = FALSE)
+
+
+# visualize doublets
+DimPlot(SF11082.seurat.filtered, reduction = 'umap', group.by = "DF.classifications_0.25_0.21_691")
+
+
+# number of singlets and doublets
+table(SF11082.seurat.filtered@meta.data$DF.classifications_0.25_0.21_691)
+
+
+
 
 # Create list of gene names from all Seurat objects
 total.genes <- list(rownames(SF11082),
