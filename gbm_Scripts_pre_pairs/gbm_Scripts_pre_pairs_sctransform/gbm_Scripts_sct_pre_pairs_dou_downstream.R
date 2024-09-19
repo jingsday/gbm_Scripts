@@ -38,5 +38,24 @@ seurat.integrated <- FindClusters(seurat.integrated, resolution = 0.3)
 
 DimPlot(seurat.integrated, reduction = "umap",group.by = 'Sample')
 DimPlot(seurat.integrated, reduction = "umap",group.by = 'Condition')
+DimPlot(seurat.integrated, reduction = "umap")
+
+###remove microglias based on biomakers expression
+VlnPlot(seurat.integrated, features = c("PTPRZ1", "VEGFA", "SLC44A1"), pt.size = 0.2,
+            ncol = 3,group.by = 'Condition')
+
+seurat.integrated.markers <- FindAllMarkers(seurat.integrated, only.pos = FALSE)
+seurat.integrated.markers %>%
+  group_by(cluster) %>%
+  dplyr::filter(abs(avg_log2FC > 1))
+
+seurat.integrated.markers %>%
+  group_by(cluster) %>%
+  dplyr::filter(avg_log2FC > 1) %>%
+  slice_head(n = 10) %>%
+  ungroup() -> top10
+DoHeatmap(seurat.integrated, features = top10$gene) + NoLegend()
+hist(seurat.integrated.markers$avg_log2FC)
+VlnPlot(seurat.integrated, features = c("Krt20", "Upk1b"),layer = 'SCT')
 
 
