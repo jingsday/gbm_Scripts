@@ -5,7 +5,7 @@ library(gridExtra)
 library(Matrix)
 library(stringr)
 
-seurat.integrated <- readRDS('//home/jing/Phd_project/project_GBM/gbm_OUTPUT/gbm_OUTPUT_sctransform/gbm_OUTPUT_intergration_doublet.rds')
+seurat.integrated <- readRDS('/home/jing/Phd_project/project_GBM/gbm_OUTPUT/gbm_OUTPUT_sctransform/gbm_OUTPUT_intergration_doublet.rds')
 seurat.integrated
 
 tumor_info<-read.table("/home/jing/Phd_project/project_GBM/gbm_DATA/gbm_DATA_metadata/GSE174554_Tumor_normal_metadata_11916v2.txt", header = TRUE, sep = " ")
@@ -34,28 +34,21 @@ seurat.integrated@meta.data$Condition[seurat.integrated@meta.data$Sample == 'SF9
 seurat.integrated <- RunPCA(seurat.integrated, verbose = FALSE)
 seurat.integrated <- RunUMAP(seurat.integrated, reduction = "pca", dims = 1:30, verbose = FALSE)
 seurat.integrated <- FindNeighbors(seurat.integrated, reduction = "pca", dims = 1:30)
-seurat.integrated <- FindClusters(seurat.integrated, resolution = 0.3)
+seurat.integrated <- FindClusters(seurat.integrated, resolution = 0.1)
 
 DimPlot(seurat.integrated, reduction = "umap",group.by = 'Sample')
 DimPlot(seurat.integrated, reduction = "umap",group.by = 'Condition')
-DimPlot(seurat.integrated, reduction = "umap")
-
+DimPlot(seurat.integrated, reduction = "umap",group.by = 'Tumor_annotation')
+DimPlot(seurat.integrated, reduction = "umap",group.by ='seurat_clusters')
 ###remove microglias based on biomakers expression
-VlnPlot(seurat.integrated, features = c("PTPRZ1", "VEGFA", "SLC44A1"), pt.size = 0.2,
-            ncol = 3,group.by = 'Condition')
+Idents(seurat.integrated) <- "Condition"
+seurat.integrated <- PrepSCTFindMarkers(seurat.integrated)
 
-seurat.integrated.markers <- FindAllMarkers(seurat.integrated, only.pos = FALSE)
-seurat.integrated.markers %>%
-  group_by(cluster) %>%
-  dplyr::filter(abs(avg_log2FC > 1))
+tmz.response <- FindMarkers(seurat.integrated, assay = "SCT", ident.1 = "Primary", ident.2 = "Recurrent",
+                                     verbose = FALSE)
+head(tmz.response, n = 15)
 
-seurat.integrated.markers %>%
-  group_by(cluster) %>%
-  dplyr::filter(avg_log2FC > 1) %>%
-  slice_head(n = 10) %>%
-  ungroup() -> top10
-DoHeatmap(seurat.integrated, features = top10$gene) + NoLegend()
-hist(seurat.integrated.markers$avg_log2FC)
-VlnPlot(seurat.integrated, features = c("Krt20", "Upk1b"),layer = 'SCT')
+VlnPlot(seurat.integrated, features = c("PTPRZ1", "VEGFA", "SLC44A1"), split.by = 'Condition',
+                 group.by = "Tumor_annotation", pt.size = 0, combine = FALSE)
 
-
+head(seurat.integrated@meta.data)
