@@ -74,5 +74,4 @@ seurat.integrated <- RunPCA(object = seurat.integrated)
 seurat.integrated <- RunUMAP(object = seurat.integrated, dims = 1:50)
 
 
-saveRDS(seurat.integrated, file = "/home/jyang/Phd_project/project_GBM/gbm_OUTPUT/gbm_intergration.rds")
-saveRDS(seurat.integrated, file = "/home/jing/Phd_project/project_GBM/gbm_OUTPUT/gbm_OUTPUT_sctransform/gbm_intergration.rds")
+saveRDS(seurat.integrated, file = "/home/jing/Phd_project/project_GBM/gbm_OUTPUT/gbm_OUTPUT_sctransform/gbm_sct_reproducing_intergration.rds")
