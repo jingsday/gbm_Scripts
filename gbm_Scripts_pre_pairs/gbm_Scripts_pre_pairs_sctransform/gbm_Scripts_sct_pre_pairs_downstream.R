@@ -34,7 +34,7 @@ seurat.integrated@meta.data$Condition[seurat.integrated@meta.data$Sample == 'SF9
 seurat.integrated <- RunPCA(seurat.integrated, verbose = FALSE)
 seurat.integrated <- RunUMAP(seurat.integrated, reduction = "pca", dims = 1:30, verbose = FALSE)
 seurat.integrated <- FindNeighbors(seurat.integrated, reduction = "pca", dims = 1:30)
-seurat.integrated <- FindClusters(seurat.integrated, resolution = 0.3)
+seurat.integrated <- FindClusters(seurat.integrated, resolution = 0.1)
 
 DimPlot(seurat.integrated, reduction = "umap",group.by = 'Sample')
 DimPlot(seurat.integrated, reduction = "umap",split.by = 'Condition')
