@@ -36,6 +36,10 @@ seurat.integrated <- RunUMAP(seurat.integrated, reduction = "pca", dims = 1:30, 
 seurat.integrated <- FindNeighbors(seurat.integrated, reduction = "pca", dims = 1:30)
 seurat.integrated <- FindClusters(seurat.integrated, resolution = 0.1)
 
+DefaultAssay(seurat.integrated) <- "SCT"
+plots <-VlnPlot(seurat.integrated, features = c("PTPRZ1", 'VEGFA','SLC44A1' ), split.by = "Condition",group.by = 'Condition',
+                pt.size = 0, combine = FALSE)
+
 DimPlot(seurat.integrated, reduction = "umap",group.by = 'Sample')
 DimPlot(seurat.integrated, reduction = "umap",group.by = 'Condition')
 DimPlot(seurat.integrated, reduction = "umap",group.by = 'Tumor_annotation')
