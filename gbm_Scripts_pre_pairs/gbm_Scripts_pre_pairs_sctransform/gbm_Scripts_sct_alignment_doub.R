@@ -34,7 +34,7 @@ for (obj_name in c("SF11082", "SF11488","SF11082","SF11488","SF11916","SF12382",
 
   obj$percent.mt <- PercentageFeatureSet(obj, pattern = "^MT-")
 
-  obj <- subset(obj, subset = nFeature_RNA > 200 & nFeature_RNA < 8000 & percent.mt < 5)
+  obj <- subset(obj, subset = nFeature_RNA > 200 & nFeature_RNA < 5000 & percent.mt < 2.5)
 
   obj <- NormalizeData(object = obj)
   obj <- FindVariableFeatures(object = obj)
@@ -85,111 +85,8 @@ for (obj in c(SF11082,SF11488,SF11916,SF12382,SF2777,SF2979,SF2990,SF3073,SF3076
   Idents(obj) <- colnames(obj@meta.data)[ncol(obj@meta.data)]
   print(table(Idents(obj)))
   obj <- subset(x = obj, idents = "Singlet")
-}
-
-
-for (obj in c(SF11082,SF11488,SF11916,SF12382,SF2777,SF2979,SF2990,SF3073,SF3076,SF3243,SF3391,SF3448,SF9358,SF9494,SF9798,SF9962)){
-  obj_name
-  obj$percent.mt <- PercentageFeatureSet(obj,pattern = "^MT-")
-
-  obj <- subset(obj, subset = nFeature_RNA > 200 & nFeature_RNA < 8000 & percent.mt < 5)
-
-  obj <- NormalizeData(object = obj)
-  obj <- FindVariableFeatures(object = obj)
-  obj <- ScaleData(object = obj)
-  obj <- RunPCA(object = obj)
-  ElbowPlot(obj)
-  obj <- FindNeighbors(object = obj, dims = 1:20)
-  obj <- FindClusters(object = obj)
-  obj <- RunUMAP(object = obj, dims = 1:20)
-## pK Identification (no ground-truth) ------------------------------------------------------------------------------------
-  sweep.res.list <- paramSweep(obj, PCs = 1:20, sct = FALSE)
-  sweep.stats <- summarizeSweep(sweep.res.list, GT = FALSE)
-  bcmvn <- find.pK(sweep.stats)
-  pK <- bcmvn %>% # select the pK that corresponds to max bcmvn to optimize doublet detection
-    filter(BCmetric == max(BCmetric)) %>%
-    select(pK) 
-
-  pK <- as.numeric(as.character(pK[[1]]))
-  print(pK)
-## Homotypic Doublet Proportion Estimate ------------------------------------------
-
-  annotations <- obj@meta.data$seurat_clusters
-  homotypic.prop <- modelHomotypic(annotations)
-  nExp_poi <- round(0.015*nrow(obj@meta.data))## Assuming ~% doublet formation rate 
-  nExp_poi.adj <- round(nExp_poi*(1-homotypic.prop))
-  nExp_poi.adj
-# run doubletFinder 
-  obj <- doubletFinder(obj, PCs = 1:10, pN = 0.25, pK = pK, nExp = nExp_poi.adj,reuse.pANN = FALSE, sct = FALSE)
-                               
-  head(obj@meta.data)                        
-# visualize doublets
-  p1 <- DimPlot(obj, reduction = 'umap', group.by = colnames(obj@meta.data)[ncol(obj@meta.data)])
   
-  ggsave(plot=p1,filename = '~/Phd_project/project_GBM/gbm_Scripts/doublet.png')
-
-  meta_col <-colnames(obj@meta.data)[ncol(obj@meta.data)]
-
-  paste(str(obj),table(obj@meta.data[meta_col]))
 }
-
-
-
-
-
-#Doublet 
-SF11082.filtered <- NormalizeData(object = SF11082)
-SF11082.filtered <- FindVariableFeatures(object = SF11082.filtered)
-SF11082.filtered <- ScaleData(object = SF11082.filtered)
-SF11082.filtered <- RunPCA(object = SF11082.filtered)
-ElbowPlot(SF11082.filtered)
-SF11082.filtered <- FindNeighbors(object = SF11082.filtered, dims = 1:20)
-SF11082.filtered <- FindClusters(object = SF11082.filtered)
-SF11082.filtered <- RunUMAP(object = SF11082.filtered, dims = 1:20)
-
-
-
-## pK Identification (no ground-truth) ---------------------------------------------------------------------------------------
-sweep.res.list_SF11082 <- paramSweep(SF11082.filtered, PCs = 1:20, sct = FALSE)
-sweep.stats_SF11082 <- summarizeSweep(sweep.res.list_SF11082, GT = FALSE)
-bcmvn_SF11082 <- find.pK(sweep.stats_SF11082)
-
-p1 <- ggplot(bcmvn_SF11082, aes(pK, BCmetric, group = 1)) +
-  geom_point() +
-  geom_line()
-
-outdir <- '~/Phd_project/project_GBM/gbm_Scripts/gbm_Scripts_pre_pairs/gbm_Scripts_pre_pairs_sctransform/00_output_doublet/'
-ggsave(filename=file.path(outdir,'doublet_SF11082.png'),plot=p1,width=15)
-
-pK <- bcmvn_SF11082 %>% # select the pK that corresponds to max bcmvn to optimize doublet detection
-  filter(BCmetric == max(BCmetric)) %>%
-  select(pK) 
-pK <- as.numeric(as.character(pK[[1]]))
-
-
-## Homotypic Doublet Proportion Estimate -------------------------------------------------------------------------------------
-annotations <- SF11082.filtered@meta.data$seurat_clusters
-homotypic.prop <- modelHomotypic(annotations)           
-nExp_poi <- round(0.015*nrow(SF11082.filtered@meta.data))  ## Assuming 1.5% doublet formation rate =
-nExp_poi.adj <- round(nExp_poi*(1-homotypic.prop))
-
-
-# run doubletFinder 
-SF11082.seurat.filtered <- doubletFinder_v3(SF11082.seurat.filtered, 
-                                     PCs = 1:20, 
-                                     pN = 0.25, 
-                                     pK = pK, 
-                                     nExp = nExp_poi.adj,
-                                     reuse.pANN = FALSE, sct = FALSE)
-
-
-# visualize doublets
-DimPlot(SF11082.seurat.filtered, reduction = 'umap', group.by = "DF.classifications_0.25_0.21_691")
-
-
-# number of singlets and doublets
-table(SF11082.seurat.filtered@meta.data$DF.classifications_0.25_0.21_691)
-
 
 
 
@@ -232,16 +129,14 @@ SF9798 <- SF9798[common.genes,]
 SF9962 <- SF9962[common.genes,]
 
 ls()
-
 merged_seurat <- merge(
   x = SF11082,y = c(SF11488,SF11916,SF12382,SF2777,
-                   SF2979,SF2990,SF3073,SF3076,SF3243,
-                   SF3391,SF3448,SF9358,SF9494,SF9798,SF9962),
+                    SF2979,SF2990,SF3073,SF3076,SF3243,
+                    SF3391,SF3448,SF9358,SF9494,SF9798,SF9962),
   add.cell.ids = ls()[15:30],project = 'GBM')
 
-
 head(merged_seurat@meta.data)
-
+merged_seurat
 # create a sample column
 merged_seurat$sample <-rownames(merged_seurat@meta.data)
 head(merged_seurat@meta.data)
@@ -251,21 +146,9 @@ head(merged_seurat@meta.data)
 merged_seurat@meta.data <- separate(merged_seurat@meta.data, col = 'sample', into = c('Sample', 'Barcode'), 
                                     sep = '_')
 
-# calculate mitochondrial percentage
-merged_seurat$mitoPercent <- PercentageFeatureSet(merged_seurat, pattern='^Mt-')
-
-VlnPlot(merged_seurat, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
-ggsave('features.jpg')
 
 
-merged_seurat_filtered <- subset(merged_seurat, subset = nFeature_RNA > 200 &
-                                   nFeature_RNA < 5000 &
-                                   mitoPercent < 2.5)
-merged_seurat
-merged_seurat_filtered
-
-
-obj.list <- SplitObject(merged_seurat_filtered, split.by = 'Sample')
+obj.list <- SplitObject(merged_seurat, split.by = 'Sample')
 
 #Part II: SCT intergration and save files for furthur analysis
 
@@ -277,15 +160,83 @@ anchors <- FindIntegrationAnchors(object.list = obj.list, normalization.method =
                                   anchor.features = features)
 seurat.integrated <- IntegrateData(anchorset = anchors, normalization.method = "SCT")
 
-saveRDS(seurat.integrated,file='~/Phd_project/project_GBM/gbm_OUTPUT/gbm_OUTPUT_sctransform/gbm_OUTPUT_intergration_doublet.rds')
 
+
+saveRDS(seurat.integrated,file='~/Phd_project/project_GBM/gbm_OUTPUT/gbm_OUTPUT_sctransform/gbm_OUTPUT_sct_intergration_doublet.rds')
+########################################################################################
 
 seurat.integrated <- ScaleData(object = seurat.integrated)
 seurat.integrated <- RunPCA(object = seurat.integrated)
 seurat.integrated <- RunUMAP(object = seurat.integrated, dims = 1:50)
 
 seurat.integrated <- FindNeighbors(seurat.integrated, dims = 1:30, verbose = FALSE)
-seurat.integrated <- FindClusters(seurat.integrated, verbose = FALSE)
-p2 <- DimPlot(seurat.integrated, group.by = 'Sample')
-ggsave(plot=p2,filename = '~/Phd_project/project_GBM/gbm_Scripts/integration_sct_origin_doublet.png')
+seurat.integrated <- FindClusters(seurat.integrated, verbose = FALSE,resolution = 0.1)
+DimPlot(seurat.integrated, group.by = 'Sample')
+
+
+tumor_info<-read.table("/home/jing/Phd_project/project_GBM/gbm_DATA/gbm_DATA_metadata/GSE174554_Tumor_normal_metadata_11916v2.txt", header = TRUE, sep = " ")
+head(tumor_info)
 head(seurat.integrated@meta.data)
+
+tumor_info$Barcode <- paste0(tumor_info$Barcode,'-','1')
+
+merged_metadata <- seurat.integrated@meta.data %>%
+  left_join(tumor_info, by = c("Sample", "Barcode"))
+seurat.integrated@meta.data$Tumor_annotation <-merged_metadata$Tumor_Normal_annotation
+
+
+seurat.integrated@meta.data$Condition <-'Recurrent'
+
+seurat.integrated@meta.data$Condition[seurat.integrated@meta.data$Sample == 'SF2777'] <- 'Primary'
+seurat.integrated@meta.data$Condition[seurat.integrated@meta.data$Sample == 'SF2990'] <- 'Primary'
+seurat.integrated@meta.data$Condition[seurat.integrated@meta.data$Sample == 'SF3076'] <- 'Primary'
+seurat.integrated@meta.data$Condition[seurat.integrated@meta.data$Sample == 'SF3391'] <- 'Primary'
+seurat.integrated@meta.data$Condition[seurat.integrated@meta.data$Sample == 'SF11916'] <- 'Primary'
+seurat.integrated@meta.data$Condition[seurat.integrated@meta.data$Sample == 'SF11082'] <- 'Primary'
+seurat.integrated@meta.data$Condition[seurat.integrated@meta.data$Sample == 'SF9358'] <- 'Primary'
+seurat.integrated@meta.data$Condition[seurat.integrated@meta.data$Sample == 'SF9798'] <- 'Primary'
+seurat.integrated
+
+
+
+DefaultAssay(seurat.integrated) <- "SCT"
+plots <-VlnPlot(seurat.integrated, features = c("PTPRZ1", 'VEGFA','SLC44A1' ), split.by = "Condition",group.by = 'Condition',
+                pt.size = 0, combine = FALSE)
+
+wrap_plots(plots = plots, ncol = 1)
+
+DimPlot(seurat.integrated, reduction = "umap",group.by = 'Sample')
+DimPlot(seurat.integrated, reduction = "umap",group.by = 'Condition')
+DimPlot(seurat.integrated, reduction = "umap",group.by = 'Tumor_annotation')
+DimPlot(seurat.integrated, reduction = "umap",group.by ='seurat_clusters')
+
+
+###remove microglias based on biomakers expression
+Idents(seurat.integrated) <- "Condition"
+
+DefaultAssay(seurat.integrated) <- "SCT"
+table(Idents(seurat.integrated))
+seurat.integrated <- PrepSCTFindMarkers(seurat.integrated)
+
+tmz.response <- FindMarkers(seurat.integrated, assay = "SCT", ident.1 = "Primary", ident.2 = "Recurrent", verbose = FALSE)
+head(tmz.response, n = 15)
+
+VlnPlot(seurat.integrated, features = c("PTPRZ1", "VEGFA", "SLC44A1"), split.by = 'Condition',
+        group.by = "Tumor_annotation", pt.size = 0, combine = FALSE)
+
+
+#DEGs recommended to use RNA assay 
+DefaultAssay(seurat.integrated) <- "SCT"
+Idents(seurat.integrated) <- "seurat_clusters"
+
+seurat.integrated.markers <- FindAllMarkers(seurat.integrated, only.pos = TRUE)
+seurat.integrated.markers %>%
+  group_by(cluster) %>%
+  dplyr::filter(avg_log2FC > 1)
+
+seurat.integrated.markers %>%
+  group_by(cluster) %>%
+  dplyr::filter(avg_log2FC > 1) %>%
+  slice_head(n = 10) %>%
+  ungroup() -> top10
+DoHeatmap(seurat.integrated, features = top10$gene) + NoLegend()

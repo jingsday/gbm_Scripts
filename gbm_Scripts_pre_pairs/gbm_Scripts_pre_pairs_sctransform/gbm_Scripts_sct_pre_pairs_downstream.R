@@ -4,6 +4,9 @@ library(tidyverse)
 library(gridExtra)
 library(Matrix)
 library(stringr)
+library(ggplot2)
+library(patchwork)
+
 
 seurat.integrated <- readRDS('/home/jing/Phd_project/project_GBM/gbm_OUTPUT/gbm_OUTPUT_sctransform/gbm_OUTPUT_sct_intergration.rds')
 seurat.integrated
@@ -18,7 +21,7 @@ merged_metadata <- seurat.integrated@meta.data %>%
   left_join(tumor_info, by = c("Sample", "Barcode"))
 seurat.integrated@meta.data$Tumor_annotation <-merged_metadata$Tumor_Normal_annotation
 
-
+head(seurat.integrated@meta.data)
 seurat.integrated@meta.data$Condition <-'Recurrent'
 
 seurat.integrated@meta.data$Condition[seurat.integrated@meta.data$Sample == 'SF2777'] <- 'Primary'
@@ -44,6 +47,5 @@ DimPlot(seurat.integrated, reduction = "umap",group.by = 'Condition')
 DefaultAssay(seurat.integrated) <- "SCT"
 plots <-VlnPlot(seurat.integrated, features = c("PTPRZ1", 'VEGFA','SLC44A1' ), split.by = "Condition",group.by = 'Condition',
                  pt.size = 0, combine = FALSE)
-library(ggplot2)
-library(patchwork)
+
 wrap_plots(plots = plots, ncol = 1)
