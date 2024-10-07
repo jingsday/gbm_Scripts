@@ -7,8 +7,6 @@ library(stringr)
 library(DoubletFinder)
 library(tidyverse)
 
-library(tidyverse)
-library(DoubletFinder)
 
 wkdir <- '~/Phd_project/project_GBM/gbm_DATA/gbm_DATA_GSE174554/gbm_DATA_scRNA_atlas/'
 
@@ -34,7 +32,7 @@ for (obj_name in c("SF11082", "SF11488","SF11082","SF11488","SF11916","SF12382",
 
   obj$percent.mt <- PercentageFeatureSet(obj, pattern = "^MT-")
 
-  obj <- subset(obj, subset = nFeature_RNA > 200 & nFeature_RNA < 5000 & percent.mt < 2.5)
+  obj <- subset(obj, subset = nFeature_RNA > 200 & nFeature_RNA < 6000 & percent.mt < 2.5)
 
   obj <- NormalizeData(object = obj)
   obj <- FindVariableFeatures(object = obj)
@@ -129,6 +127,7 @@ SF9798 <- SF9798[common.genes,]
 SF9962 <- SF9962[common.genes,]
 
 ls()
+
 merged_seurat <- merge(
   x = SF11082,y = c(SF11488,SF11916,SF12382,SF2777,
                     SF2979,SF2990,SF3073,SF3076,SF3243,
@@ -161,6 +160,7 @@ anchors <- FindIntegrationAnchors(object.list = obj.list, normalization.method =
 seurat.integrated <- IntegrateData(anchorset = anchors, normalization.method = "SCT")
 
 
+print)
 
 saveRDS(seurat.integrated,file='~/Phd_project/project_GBM/gbm_OUTPUT/gbm_OUTPUT_sctransform/gbm_OUTPUT_sct_intergration_doublet.rds')
 ########################################################################################
@@ -226,10 +226,38 @@ VlnPlot(seurat.integrated, features = c("PTPRZ1", "VEGFA", "SLC44A1"), split.by 
 
 
 #DEGs recommended to use RNA assay 
-DefaultAssay(seurat.integrated) <- "SCT"
-Idents(seurat.integrated) <- "seurat_clusters"
+DefaultAssay(seurat.integrated) <- "integrated"
+
+
+# Run the standard workflow for visualization and clustering
+seurat.integrated <- ScaleData(seurat.integrated, verbose = FALSE)
+
+seurat.integrated <- RunPCA(seurat.integrated, verbose = FALSE)
+seurat.integrated <- RunUMAP(seurat.integrated, reduction = "pca", dims = 1:30)
+
+seurat.integrated <- FindNeighbors(seurat.integrated, dims = 1:30, verbose = FALSE)
+#sct_murine <- FindClusters(sct_murine, resolution = 0.5)
+seurat.integrated <- FindClusters(seurat.integrated, resolution = 0.1)
 
 seurat.integrated.markers <- FindAllMarkers(seurat.integrated, only.pos = TRUE)
+seurat.integrated.markers %>%
+  group_by(cluster) %>%
+  dplyr::filter(avg_log2FC > 1)
+
+seurat.integrated.markers %>%
+  group_by(cluster) %>%
+  dplyr::filter(avg_log2FC > 1) %>%
+  slice_head(n = 10) %>%
+  ungroup() -> top10
+plot.new()
+png("markers.png")
+DoHeatmap(seurat.integrated, features = top10$gene) + NoLegend()
+dev.off()
+============================
+Idents(seurat.integrated) <- "seurat_clusters"
+library(metap)
+seurat.integrated.markers <- FindConservedMarkers(seurat.integrated, verbose= False)
+
 seurat.integrated.markers %>%
   group_by(cluster) %>%
   dplyr::filter(avg_log2FC > 1)

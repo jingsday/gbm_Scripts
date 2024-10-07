@@ -32,61 +32,85 @@ dou_seurat.integrated@meta.data$Condition[dou_seurat.integrated@meta.data$Sample
 dou_seurat.integrated@meta.data$Condition[dou_seurat.integrated@meta.data$Sample == 'SF9798'] <- 'Primary'
 dou_seurat.integrated
 
+#SCT assay
+DefaultAssay(dou_seurat.integrated) <- "SCT"
 
+dou_seurat.integrated <- ScaleData(object = dou_seurat.integrated)
+dou_seurat.integrated <- RunPCA(object = dou_seurat.integrated)
+dou_seurat.integrated <- RunUMAP(object = dou_seurat.integrated, dims = 1:50)
+
+dou_seurat.integrated <- FindNeighbors(dou_seurat.integrated, dims = 1:30, verbose = FALSE)
+dou_seurat.integrated <- FindClusters(dou_seurat.integrated, verbose = FALSE,resolution = 0.1)
+
+plots <-VlnPlot(dou_seurat.integrated, features = c("PTPRZ1", 'VEGFA','SLC44A1' ), split.by = "Condition",group.by = 'Condition',
+                pt.size = 0, combine = FALSE)
+
+wrap_plots(plots = plots, ncol = 1)
+
+DimPlot(dou_seurat.integrated, reduction = "umap",group.by = 'Sample')
+DimPlot(dou_seurat.integrated, reduction = "umap",group.by = 'Condition')
+DimPlot(dou_seurat.integrated, reduction = "umap",group.by = 'Tumor_annotation')
+DimPlot(dou_seurat.integrated, reduction = "umap",group.by ='seurat_clusters')
+
+
+DefaultAssay(dou_seurat.integrated) <- "integrated"
+
+dou_seurat.integrated <- ScaleData(object = dou_seurat.integrated)
+dou_seurat.integrated <- RunPCA(object = dou_seurat.integrated)
+dou_seurat.integrated <- RunUMAP(object = dou_seurat.integrated, dims = 1:50)
+
+dou_seurat.integrated <- FindNeighbors(dou_seurat.integrated, dims = 1:30, verbose = FALSE)
+dou_seurat.integrated <- FindClusters(dou_seurat.integrated, verbose = FALSE,resolution = 0.1)
+DimPlot(dou_seurat.integrated, group.by = 'Sample')
+
+
+#DEGs recommended to use RNA assay 
+DefaultAssay(dou_seurat.integrated) <- "integrated"
+
+
+dou_seurat.integrated <- ScaleData(dou_seurat.integrated, verbose = FALSE)
+
+dou_seurat.integrated <- RunPCA(dou_seurat.integrated, verbose = FALSE)
+dou_seurat.integrated <- RunUMAP(dou_seurat.integrated, reduction = "pca", dims = 1:30)
+
+dou_seurat.integrated <- FindNeighbors(dou_seurat.integrated, dims = 1:30, verbose = FALSE)
+
+dou_seurat.integrated <- FindClusters(dou_seurat.integrated, resolution = 0.1)
+
+dou_seurat.integrated.markers <- FindAllMarkers(dou_seurat.integrated, only.pos = TRUE)
+dou_seurat.integrated.markers %>%
+  group_by(cluster) %>%
+  dplyr::filter(avg_log2FC > 1)
+
+dou_seurat.integrated.markers %>%
+  group_by(cluster) %>%
+  dplyr::filter(avg_log2FC > 1) %>%
+  slice_head(n = 10) %>%
+  ungroup() -> top10
+
+DoHeatmap(dou_seurat.integrated.markers, features = top10$gene) + NoLegend()
 
 
 #Singlet retrieving
 
 
-doublet_columns <- grep("DF", colnames(dou_seurat.integrated@meta.data), value = TRUE)
-dou_seurat.integrated@meta.data$singlet_anno <- apply(dou_seurat.integrated@meta.data[, doublet_columns], 1, function(row) {
-  # Return the first non-NA value in the row
-  non_na_value <- row[!is.na(row)][1]
-  if (is.na(non_na_value)) {
-    return(NA)  # If all values are NA, keep it as NA
-  } else {
-    return(non_na_value)  # Otherwise, return the first non-NA value (Singlet or Doublet)
-  }
-})
-table(dou_seurat.integrated@meta.data$singlet_anno)
-#Subset
-Idents(dou_seurat.integrated) <- dou_seurat.integrated@meta.data$singlet_anno
+singlets_dou_seurat.integrated <- RunPCA(singlets_dou_seurat.integrated, verbose = FALSE)
+singlets_dou_seurat.integrated <- RunUMAP(singlets_dou_seurat.integrated, reduction = "pca", dims = 1:30, verbose = FALSE)
+singlets_dou_seurat.integrated <- FindNeighbors(singlets_dou_seurat.integrated, reduction = "pca", dims = 1:30)
+singlets_dou_seurat.integrated <- FindClusters(singlets_dou_seurat.integrated, resolution = 0.1)
 
-singlets_seurat.integrated <- subset(dou_seurat.integrated,idents = 'Singlet')
-singlets_seurat.integrated
-#
-head(singlets_seurat.integrated@meta.data)
-
-Idents(singlets_seurat.integrated) <- dou_seurat.integrated@meta.data$orig.ident
-
-
-singlets_seurat.integrated <- RunPCA(singlets_seurat.integrated, verbose = FALSE)
-singlets_seurat.integrated <- RunUMAP(singlets_seurat.integrated, reduction = "pca", dims = 1:30, verbose = FALSE)
-singlets_seurat.integrated <- FindNeighbors(singlets_seurat.integrated, reduction = "pca", dims = 1:30)
-singlets_seurat.integrated <- FindClusters(singlets_seurat.integrated, resolution = 0.1)
-
-DefaultAssay(singlets_seurat.integrated) <- "SCT"
-plots <-VlnPlot(singlets_seurat.integrated, features = c("PTPRZ1", 'VEGFA','SLC44A1' ), split.by = "Condition",group.by = 'Condition',
-                pt.size = 0, combine = FALSE)
-
-wrap_plots(plots = plots, ncol = 1)
-
-DimPlot(singlets_seurat.integrated, reduction = "umap",group.by = 'Sample')
-DimPlot(singlets_seurat.integrated, reduction = "umap",group.by = 'Condition')
-DimPlot(singlets_seurat.integrated, reduction = "umap",group.by = 'Tumor_annotation')
-DimPlot(singlets_seurat.integrated, reduction = "umap",group.by ='seurat_clusters')
 
 ###remove microglias based on biomakers expression
-Idents(singlets_seurat.integrated) <- "Condition"
+Idents(singlets_dou_seurat.integrated) <- "Condition"
 
-DefaultAssay(singlets_seurat.integrated) <- "SCT"
-table(Idents(singlets_seurat.integrated))
-singlets_seurat.integrated <- PrepSCTFindMarkers(singlets_seurat.integrated)
+DefaultAssay(singlets_dou_seurat.integrated) <- "SCT"
+table(Idents(singlets_dou_seurat.integrated))
+singlets_dou_seurat.integrated <- PrepSCTFindMarkers(singlets_dou_seurat.integrated)
 
 library(future)
 options(future.globals.maxSize = 10 * 1024^3) 
 
-tmz.response <- FindMarkers(singlets_seurat.integrated, assay = "SCT", ident.1 = "Primary", ident.2 = "Recurrent", verbose = FALSE, recorrect_umi = FALSE)
+tmz.response <- FindMarkers(singlets_dou_seurat.integrated, assay = "SCT", ident.1 = "Primary", ident.2 = "Recurrent", verbose = FALSE, recorrect_umi = FALSE)
 
 head(tmz.response, n = 15)
 
