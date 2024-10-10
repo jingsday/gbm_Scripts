@@ -67,7 +67,7 @@ for (obj_name in c("SF11082", "SF11488","SF11082","SF11488","SF11916","SF12382",
   p1 <- DimPlot(obj, reduction = 'umap', group.by = colnames(obj@meta.data)[ncol(obj@meta.data)])
   
   # Save UMAP plot for doublet detection
-  ggsave(plot = p1, filename = paste0('~/Phd_project/project_GBM/gbm_Scripts/gbm_Scripts_pre_pairs/gbm_Scripts_pre_pairs_OUTPUT/', obj_name, '_doublet.png'))
+  #ggsave(plot = p1, filename = paste0('~/Phd_project/project_GBM/gbm_Scripts/gbm_Scripts_pre_pairs/gbm_Scripts_pre_pairs_OUTPUT/', obj_name, '_doublet.png'))
 
   ## Output metadata and table of doublets
   meta_col <- colnames(obj@meta.data)[ncol(obj@meta.data)]
@@ -126,6 +126,7 @@ SF9494 <- SF9494[common.genes,]
 SF9798 <- SF9798[common.genes,]
 SF9962 <- SF9962[common.genes,]
 
+
 ls()
 
 merged_seurat <- merge(
@@ -146,6 +147,7 @@ merged_seurat@meta.data <- separate(merged_seurat@meta.data, col = 'sample', int
                                     sep = '_')
 
 
+saveRDS(merged_seurat,file='~/Phd_project/project_GBM/gbm_OUTPUT/gbm_OUTPUT_sctransform/gbm_OUTPUT_sct_merged_seurat_doublet.rds')
 
 obj.list <- SplitObject(merged_seurat, split.by = 'Sample')
 

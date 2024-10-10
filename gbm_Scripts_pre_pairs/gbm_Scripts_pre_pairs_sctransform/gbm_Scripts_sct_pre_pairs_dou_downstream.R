@@ -85,12 +85,38 @@ dou_seurat.integrated.markers %>%
 dou_seurat.integrated.markers %>%
   group_by(cluster) %>%
   dplyr::filter(avg_log2FC > 1) %>%
-  slice_head(n = 10) %>%
+  slice_head(n = 5) %>%
   ungroup() -> top10
+library(dplyr)
+# Ensure correct assay and data slot
+expr_matrix <- GetAssayData(dou_seurat.integrated, assay = "RNA", slot = "data")
 
-DoHeatmap(dou_seurat.integrated.markers, features = top10$gene) + NoLegend()
+DoHeatmap(dou_seurat.integrated, features = top10$gene) 
+DoHeatmap(dou_seurat.integrated, features = top10$gene, size = 3) + NoLegend()
 
+top10[top10$cluster==4,]
+FeaturePlot(dou_seurat.integrated, features = c("CD44", "SNTG1", "SLC11A1", "CLDN11", "DIAPH3", "FCGR3A", "LYZ", "PPBP",
+                               "CD8A"))
+VlnPlot(dou_seurat.integrated, features = top10$gene[2])
+install.packages(c('pheatmap','ComplexHeatmap'))
 
+library(ComplexHeatmap)
+heatmap_data <- dou_seurat.integrated.markers %>%
+  select(gene, cluster, avg_log2FC) %>%
+  pivot_wider(names_from = cluster, values_from = avg_log2FC) %>%
+  column_to_rownames(var = "gene")
+
+# Create heatmap using pheatmap
+pheatmap(heatmap_data, cluster_rows = TRUE, cluster_cols = TRUE, show_rownames = TRUE, show_colnames = TRUE)
+Heatmap(dou_seurat.integrated.markers[c('avg_log2FC','gene'),], celltype=dou_seurat.integrated.markers$cluster)
+length(dou_seurat.integrated.markers$cluster)
+# Create the heatmap
+pheatmap(subset_matrix, cluster_rows = TRUE, cluster_cols = TRUE, show_rownames = TRUE, show_colnames = FALSE)
+
+png('test.png')
+DoHeatmap(dou_seurat.integrated, features = top10$gene) + NoLegend()
+dev.off()
+dou_seurat.integrated
 #Singlet retrieving
 
 
