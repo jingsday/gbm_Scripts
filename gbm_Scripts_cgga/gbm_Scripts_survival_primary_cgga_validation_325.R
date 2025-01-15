@@ -3,13 +3,14 @@ library(survminer)
 library(dplyr)
 library(ggplot2)
 library(stringr)
+library("readxl")
 
-setwd("/Users/lidiayung/PhD_project/project_GBM/gbm_DATA/gbm_DATA_CGGA")
 
-clin_raw<- read.delim("CGGA.mRNAseq_325_clinical.20200506.txt", sep = '\t')#,skip = 4,row.names = 'PATIENT_ID')
-table(clin_raw$PRS_type)
+setwd("/home/jing/Phd_project/project_GBM/gbm_DATA/gbm_DATA_CGGA")
 
-clin <- clin_raw[clin_raw$PRS_type =="Primary",]
+#model applied data
+clin_693_raw <- read.delim("CGGA.mRNAseq_693_clinical.20200506.txt", sep = '\t')
+clin_693 <- clin_693_raw[clin_693_raw$PRS_type =="Primary",]
 
 table(clin$IDH_mutation_status)
 
@@ -17,19 +18,78 @@ clin <- clin[clin$IDH_mutation_status %in% c('Wildtype'),]
 
 table(clin_raw$IDH_mutation_status)
 
-RNA_raw <- read.delim("CGGA.mRNAseq_325.Read_Counts-genes.20220620.txt",check.names = FALSE)
+clin_raw<- read.delim("CGGA.mRNAseq_325_clinical.20200506.txt", sep = '\t')#,skip = 4,row.names = 'PATIENT_ID')
+table(clin_raw$PRS_type)
+
+clin <- clin_raw[clin_raw$PRS_type =="Primary",]
+clin <- clin_raw[clin_raw$Histology =="GBM",]
+
+table(clin$IDH_mutation_status)
+
+clin <- clin[clin$IDH_mutation_status %in% c('Wildtype'),]
+
+table(clin_raw$IDH_mutation_status)
+
+RNA_raw <- read.delim("CGGA.mRNAseq_325.RSEM-genes.20200506.txt",check.names = FALSE)
 RNA_raw[is.na(RNA_raw)] <- 0
 
-RNA_raw <- RNA_raw[RNA_raw$gene_name!='',]
-RNA_raw <- RNA_raw[!duplicated(RNA_raw$gene_name),]
+RNA_raw <- RNA_raw[RNA_raw$Gene_Name!='',]
+RNA_raw <- RNA_raw[!duplicated(RNA_raw$Gene_Name),]
 
-rownames(RNA_raw) <- RNA_raw$gene_name
+rownames(RNA_raw) <- RNA_raw$Gene_Name
 RNA <- as.data.frame(t(RNA_raw[-1]))
 row.names(clin) <- clin$CGGA_ID
 # Align clinical data:
 RNA <- RNA[str_sub(row.names(RNA)) %in% row.names(clin), ]
 RNA <- apply(RNA, c(1, 2), function(value) log2(value + 1))
-RNA <- as.data.frame(scale(RNA, center = TRUE, scale = TRUE))
+
+#read STV
+
+stv <-  read.csv('/home/jing/Phd_project/project_GBM/gbm_OUTPUT/gbm_OUTPUT/gbm_OUTPUT_cgga/gbm_cgga_wd_survival_coeffs_glmnet.csv',
+                 row.names = 1)
+stv <- read_excel('/home/jing/Phd_project/project_GBM/gbm_OUTPUT/gbm_OUTPUT/gbm_OUTPUT_LINCS/ALL_DATA_2020_Jing_gbm_del.xlsx',
+                  sheet = 'STVs')
+
+
+#dot product
+common_genes <- intersect(colnames(RNA), stv$Gene)
+
+rna_log2_subset <- RNA[, common_genes]
+stv_subset <- stv[stv$Gene %in% common_genes, ]
+stv_subset <- stv_subset[match(common_genes, stv_subset$Gene), ]
+
+result <- rna_log2_subset %*% stv_subset$GBM_survival
+
+clin$DPD_prognosis <- result[row.names(clin) %in% str_sub(row.names(result)), ]
+
+hist(clin$DPD_prognosis)
+
+#assign to positive,negative (I only have positive and decided to select a positive threshold)
+clin$outcome <- ifelse(clin$DPD_prognosis > 0, "Positive",
+                            ifelse(clin$DPD_prognosis == 0, "0", "Negative"))
+
+
+### hazard ratio
+surv_obj_filt <- Surv(time = clin$OS, 
+                      event = clin$Censor..alive.0..dead.1.=="1")
+
+
+fit <- survfit(surv_obj_filt ~ outcome , data = clin)
+ggsurvplot(fit, data = clin, xlab = "Days", ylab = "Overall survival",pval = TRUE,
+           risk.table =TRUE)
+
+fit.coxph <- coxph(surv_obj_filt ~ Gender + Age+MGMTp_methylation_status +outcome, data = clin)
+p<- ggforest(fit.coxph, data = clin)
+p
+ggsave(p, file='/Users/lidiayung/PhD_project/project_GBM/gbm_OUTPUT/gbm_OUTPUT_cgga/gbm_cgga_wd_hazard_r.svg')
+# Create bar plot
+ggplot(coef_data, aes(x = reorder(variable, coefficient), y = coefficient)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  coord_flip() +  # Rotate axis labels
+  labs(title = "Coefficients from glmnet Model", 
+       x = "Genes", y = "Coefficient") +
+  theme_minimal()
+
 
 
 surv_obj <- Surv(time = clin$OS, 
