@@ -14,7 +14,7 @@ clin <- clin_raw[clin_raw$PRS_type =="Primary",]
 
 table(clin$IDH_mutation_status)
 
-clin <- clin[clin$IDH_mutation_status %in% c('Mutant'),]
+clin <- clin[clin$IDH_mutation_status %in% c('Wildtype'),]
 
 
 RNA_raw <- read.delim("CGGA.mRNAseq_693.RSEM-genes.20200506.txt",check.names = FALSE)
@@ -45,7 +45,7 @@ surv_summary <- summary(fit)
 median_surv <- summary(fit)$table["median"]
 median_surv
 
-p <- ggsurvplot(fit, data = clin, xlab = "Month", ylab = "Overall survival", 
+p <- ggsurvplot(fit, data = clin, xlab = "Day", ylab = "Overall survival", 
                 surv.median.line = 'hv', risk.table = TRUE)
 
 # Customize the x-axis to include the value 13.61 along with other specified breaks
@@ -167,7 +167,7 @@ library("glmpath")
 library("glmnet")
 library("penalized")
 
-fit_glm <- glmnet(RNA_filt,surv_filt,family="cox") # , alpha = 1, standardize = TRUE, maxit = 1000
+fit_glm <- glmnet(RNA_filt,surv_filt,alpha=1,family="cox") # , alpha = 1, standardize = TRUE, maxit = 1000
 print(fit_glm)
 
 cvfit <- cv.glmnet(data.matrix(RNA_filt),surv_filt,family="cox",type.measure = "C")
