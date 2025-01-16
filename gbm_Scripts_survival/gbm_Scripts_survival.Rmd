@@ -1,0 +1,182 @@
+---
+title: "gbm_Scripts_survival"
+author: "Jing"
+date: "2025-01-16"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(survival)
+library(survminer)
+library(dplyr)
+library(ggplot2)
+library(stringr)
+
+
+wkdir<- ("/home/jing/Phd_project/project_GBM/gbm_DATA/")
+
+```
+
+```{r TCGA}
+tcga_raw <- read.delim(paste0(wkdir,"gbm_DATA_TCGA/data_clinical_patient.txt"), 
+                       sep = '\t',skip = 4,row.names = 'PATIENT_ID')
+table(tcga_raw$SUBTYPE)
+
+clin_sample <- read.delim(paste0(wkdir,"gbm_DATA_TCGA/data_clinical_sample.txt"), sep = '\t',skip = 4)
+table(clin_sample$SAMPLE_TYPE)
+
+tcga_raw <-tcga_raw[tcga_raw$SAMPLE_TYPE=='Primary',]
+tcga_raw <-tcga_raw[tcga_raw$SUBTYPE=='GBM_IDHwt',]
+tcga_raw <- tcga_raw[tcga_raw$SEX != "", ]
+
+tcga_RNA_raw <- read.delim(paste0(wkdir,"gbm_DATA_TCGA/data_mrna_seq_v2_rsem_zscores_ref_all_samples.txt"),check.names = FALSE)
+tcga_RNA_raw[is.na(tcga_RNA_raw)] <- 0
+tcga_RNA_raw <- tcga_RNA_raw[tcga_RNA_raw$Hugo_Symbol!='',]
+tcga_RNA_raw <- tcga_RNA_raw[!duplicated(tcga_RNA_raw$Hugo_Symbol),]
+rownames(tcga_RNA_raw) <- tcga_RNA_raw$Hugo_Symbol
+tcga_RNA <- as.data.frame(t(tcga_RNA_raw[-1:-2]))
+
+# Align clinical data:
+tcga_clin <- tcga_raw[row.names(tcga_raw)%in% str_sub(row.names(tcga_RNA), end = -4),]
+tcga_RNA <- tcga_RNA[str_sub(row.names(tcga_RNA), end = -4) %in% row.names(tcga_raw), ]
+
+```
+
+```{r CGGA 693}
+clin_693_raw <- read.delim(paste0(wkdir,"gbm_DATA_CGGA/CGGA.mRNAseq_693_clinical.20200506.txt"), sep = '\t')
+clin_693 <- clin_693_raw[clin_693_raw$PRS_type =="Primary",]
+clin_693 <- clin_693[clin_693$IDH_mutation_status %in% c('Wildtype'),]
+clin_693 <- clin_693[clin_693$Histology %in% c('GBM'),]
+
+
+cgga_693RNA_raw <- read.delim(paste0(wkdir,"gbm_DATA_CGGA/CGGA.mRNAseq_693.RSEM-genes.20200506.txt"),check.names = FALSE)
+cgga_693RNA_raw[is.na(cgga_693RNA_raw)] <- 0
+
+cgga_693RNA_raw <- cgga_693RNA_raw[cgga_693RNA_raw$Gene_Name!='',]
+cgga_693RNA_raw <- cgga_693RNA_raw[!duplicated(cgga_693RNA_raw$Gene_Name),]
+
+rownames(cgga_693RNA_raw) <- cgga_693RNA_raw$Gene_Name
+
+cgga_693RNA <- as.data.frame(t(cgga_693RNA_raw[-1]))
+row.names(clin_693) <- clin_693$CGGA_ID
+# Align clinical data:
+cgga_693RNA <- cgga_693RNA[str_sub(row.names(cgga_693RNA)) %in% row.names(clin_693), ]
+cgga_693RNA <- apply(cgga_693RNA, c(1, 2), function(value) log2(value + 1))
+cgga_693RNA <- as.data.frame(scale(cgga_693RNA, center = TRUE, scale = TRUE))
+```
+
+```{r CGGA 325}
+
+clin_325_raw<- read.delim(paste0(wkdir,"gbm_DATA_CGGA/CGGA.mRNAseq_325_clinical.20200506.txt"), sep
+                             ='\t')#,skip = 4,row.names = 'PATIENT_ID')
+table(clin_325$PRS_type)
+
+clin_325 <- clin_325_raw[clin_325_raw$PRS_type =="Primary",]
+clin_325 <- clin_325[clin_325$Histology =="GBM",]
+clin_325 <- clin_325[clin_325$IDH_mutation_status =="Wildtype",]
+
+table(clin_325$IDH_mutation_status)
+
+clin_325RNA_raw <- read.delim(paste0(wkdir,"gbm_DATA_CGGA/CGGA.mRNAseq_325.RSEM-genes.20200506.txt"),check.names = FALSE)
+clin_325RNA_raw[is.na(clin_325RNA_raw)] <- 0
+
+clin_325RNA_raw <- clin_325RNA_raw[clin_325RNA_raw$Gene_Name!='',]
+clin_325RNA_raw <- clin_325RNA_raw[!duplicated(clin_325RNA_raw$Gene_Name),]
+
+rownames(clin_325RNA_raw) <- clin_325RNA_raw$Gene_Name
+clin_325RNA <- as.data.frame(t(clin_325RNA_raw[-1]))
+row.names(clin_325RNA) <- clin_325RNA$CGGA_ID
+# Align clinical data:
+clin_325RNA <- clin_325RNA[str_sub(row.names(clin_325RNA)) %in% row.names(clin_325), ]
+clin_325RNA <- apply(clin_325RNA, c(1, 2), function(value) log2(value + 1))
+
+clin_325RNA <- as.data.frame(scale(clin_325RNA, center = TRUE, scale = TRUE))
+```
+
+```{r Merging dfs}
+#Genes
+head(colnames(clin_325RNA))
+head(colnames(cgga_693RNA))
+head(colnames(tcga_RNA))
+
+common_genes <- intersect(colnames(clin_325RNA), colnames(cgga_693RNA))
+common_genes<- intersect(common_genes, colnames(tcga_RNA))
+clin_325RNA[,common_genes]
+
+stv <- read_excel('/home/jing/Phd_project/project_GBM/gbm_OUTPUT/gbm_OUTPUT/gbm_OUTPUT_LINCS/ALL_DATA_2020_Jing_gbm_del.xlsx',
+                  sheet = 'STVs')
+common_genes <- intersect(common_genes, stv$Gene)
+
+#clin columns
+
+(intersect(colnames(clin_325),colnames(clin_693) ))
+
+colnames(tcga_clin)
+
+tcga_clin$Gender <- tcga_clin$SEX
+tcga_clin$Age <- tcga_clin$AGE
+tcga_clin$Censor..alive.0..dead.1. <- tcga_clin$OS_STATUS
+tcga_clin$OS <- tcga_clin$OS_MONTHS*30
+colnames(tcga_clin)
+common_columns <- c('Gender','Age','Censor..alive.0..dead.1.','OS')
+
+comb_clin <- list(tcga_clin, clin_325, clin_693)
+comb_clin <- do.call(rbind, lapply(comb_clin, function(x) x[,common_columns, drop = FALSE]))
+
+#RNA
+RNA_combined <- rbind(
+  tcga_RNA[, common_genes, drop = FALSE],
+  clin_325RNA[, common_genes, drop = FALSE],
+  cgga_693RNA[, common_genes, drop = FALSE]
+)
+
+
+
+
+surv_obj <- Surv(time = comb_clin$OS, 
+                 event = comb_clin$Censor..alive.0..dead.1.=="1")
+
+#surv_obj 
+fit <- survfit(surv_obj ~ 1, data = comb_clin)
+ggsurvplot(fit, data = comb_clin, xlab = "Days", ylab = "Overall survival", surv.median.line = 'hv',risk.table = TRUE)
+
+summary(fit)$table["median"]
+ggsurvplot(fit, data = comb_clin, xlab = "Days", ylab = "Overall survival", 
+                surv.median.line = 'hv', risk.table = TRUE)
+comb_clin$Gender <- trimws(comb_clin$Gender)
+
+fit <- survfit(surv_obj ~ Gender , data = comb_clin)
+ggsurvplot(fit, data = comb_clin, xlab = "Month", ylab = "Overall survival",pval = TRUE,
+           risk.table =TRUE)
+
+```
+
+```{r}
+
+surv_obj <- Surv(time = clin$OS, 
+                 event = clin$Censor..alive.0..dead.1.=="1")
+
+#surv_obj 
+fit <- survfit(surv_obj ~ 1, data = clin)
+ggsurvplot(fit, data = clin, xlab = "Days", ylab = "Overall survival", surv.median.line = 'hv',risk.table = TRUE)
+
+```
+
+```{r}
+
+# fit multivariate model (COX proportional hazard) 
+fit.coxph <- coxph(surv_obj ~ EGFR + ERBB2 + ERBB3 + ERBB4 + NRG1 + NRG2 + NRG3 + NRG4, 
+                   data = RNA_combined)
+
+ggforest(fit.coxph, data = RNA)
+#new.coxph <- predict(fit.coxph, newdata = RNA[,c("KRAS", "ERBB2")])
+#new.coxph
+fit.coxph <- coxph(surv_obj ~ KSR1 + KSR2 + IQGAP1 + GAB1 + GAB2, 
+                   data = RNA)
+ggforest(fit.coxph, data = RNA)
+
+fit.coxph <- coxph(surv_obj ~ SEX + AGE , data = clin)
+ggforest(fit.coxph, data = clin)
+
+```
+
