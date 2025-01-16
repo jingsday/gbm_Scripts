@@ -108,7 +108,7 @@ common_genes <- intersect(colnames(cgga_325RNA), colnames(cgga_693RNA))
 common_genes<- intersect(common_genes, colnames(tcga_RNA))
 cgga_693RNA[,common_genes]
 
-stv <- read_excel('/home/jing/Phd_project/project_GBM/gbm_OUTPUT/gbm_OUTPUT/gbm_OUTPUT_LINCS/ALL_DATA_2020_Jing_gbm_del.xlsx',
+stv <- read_excel('/home/jing/Phd_project/project_GBM/gbm_OUTPUT/gbm_OUTPUT_LINCS/ALL_DATA_2020_Jing_gbm_del.xlsx',
                   sheet = 'STVs')
 lincs_genes <- intersect(common_genes, stv$Gene)
 
