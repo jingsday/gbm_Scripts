@@ -1,11 +1,13 @@
 ---
-title: "gbm_Scripts_survival"
+title: "gbm_Scripts_cgga_bind"
 author: "Jing"
-date: "2025-01-16"
+date: "2025-01-17"
 output: html_document
+conclusion: not working with cgga. Dunno why
 ---
 
 ```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
 library(survival)
 library(survminer)
 library(dplyr)
@@ -16,45 +18,23 @@ library(readxl)
 
 wkdir<- ("/home/jing/Phd_project/project_GBM/gbm_DATA/")
 outdir<- ('/home/jing/Phd_project/project_GBM/gbm_OUTPUT/gbm_OUTPUT_survival/')
-```
 
-```{r TCGA}
-#clin
-tcga_clin_raw <- read.delim(paste0(wkdir,"gbm_DATA_TCGA/data_clinical_patient.txt"), 
-                       sep = '\t',skip = 4,row.names = 'PATIENT_ID')
+#clin 693 and clin 325 primary pacients had been treated before they were sampled.
+#To fit our purpose, further filtering should be performed
+table(clin_325$Radio_status..treated.1.un.treated.0.)
+table(clin_693$Radio_status..treated.1.un.treated.0.)
 
-#clin profiles
-clin_sample <- read.delim(paste0(wkdir,"gbm_DATA_TCGA/data_clinical_sample.txt"), sep = '\t',skip = 4)
-table(clin_sample$SAMPLE_TYPE)
-recurrent <-clin_sample[clin_sample$SAMPLE_TYPE=="Recurrence",]
-recurrent$PATIENT_ID
 
-tcga_clin_raw$SAMPLE_TYPE ="Primary"
-tcga_clin_raw[recurrent$PATIENT_ID,]$SAMPLE_TYPE='Recurrence'
-table(tcga_clin_raw$SAMPLE_TYPE)
-
-tcga_clin_raw <-tcga_clin_raw[tcga_clin_raw$SAMPLE_TYPE=='Primary',]
-tcga_clin_raw <-tcga_clin_raw[tcga_clin_raw$SUBTYPE=='GBM_IDHwt',]
-tcga_clin_raw <- tcga_clin_raw[tcga_clin_raw$SEX != "", ]
-
-#RNA
-tcga_RNA_raw <- read.delim(paste0(wkdir,"gbm_DATA_TCGA/data_mrna_seq_v2_rsem_zscores_ref_all_samples.txt"),check.names = FALSE)
-tcga_RNA_raw[is.na(tcga_RNA_raw)] <- 0
-tcga_RNA_raw <- tcga_RNA_raw[tcga_RNA_raw$Hugo_Symbol!='',]
-tcga_RNA_raw <- tcga_RNA_raw[!duplicated(tcga_RNA_raw$Hugo_Symbol),]
-rownames(tcga_RNA_raw) <- tcga_RNA_raw$Hugo_Symbol
-tcga_RNA <- as.data.frame(t(tcga_RNA_raw[-1:-2]))
-
-# Align clinical data:
-tcga_clin <- tcga_clin_raw[row.names(tcga_clin_raw)%in% str_sub(row.names(tcga_RNA), end = -4),]
-tcga_RNA <- tcga_RNA[str_sub(row.names(tcga_RNA), end = -4) %in% row.names(tcga_clin_raw), ]
 ```
 
 ```{r CGGA 693}
+
 clin_693_raw <- read.delim(paste0(wkdir,"gbm_DATA_CGGA/CGGA.mRNAseq_693_clinical.20200506.txt"), sep = '\t')
 clin_693 <- clin_693_raw[clin_693_raw$PRS_type =="Primary",]
 clin_693 <- clin_693[clin_693$IDH_mutation_status %in% c('Wildtype'),]
 clin_693 <- clin_693[clin_693$Histology %in% c('GBM'),]
+clin_693 <- clin_693[clin_693$Radio_status..treated.1.un.treated.0. %in% c('0'),]
+clin_693 <- clin_693[clin_693$Chemo_status..TMZ.treated.1.un.treated.0. %in% c('0'),]
 
 
 cgga_693RNA_raw <- read.delim(paste0(wkdir,"gbm_DATA_CGGA/CGGA.mRNAseq_693.RSEM-genes.20200506.txt"),check.names = FALSE)
@@ -102,30 +82,19 @@ cgga_325RNA <- as.data.frame(scale(cgga_325RNA_log2, center = TRUE, scale = TRUE
 #Genes
 head(colnames(cgga_325RNA))
 head(colnames(cgga_693RNA))
-head(colnames(tcga_RNA))
 cgga_693RNA
 common_genes <- intersect(colnames(cgga_325RNA), colnames(cgga_693RNA))
-common_genes<- intersect(common_genes, colnames(tcga_RNA))
 cgga_693RNA[,common_genes]
 
 stv <- read_excel('/home/jing/Phd_project/project_GBM/gbm_OUTPUT/gbm_OUTPUT_LINCS/ALL_DATA_2020_Jing_gbm_del.xlsx',
                   sheet = 'STVs')
 lincs_genes <- intersect(common_genes, stv$Gene)
 
-#clin columns
-tcga_clin$Gender <- tcga_clin$SEX
-tcga_clin$Age <- tcga_clin$AGE
-tcga_clin$Censor..alive.0..dead.1. <- tcga_clin$OS_STATUS
-tcga_clin$OS <- tcga_clin$OS_MONTHS*30
-colnames(tcga_clin)
-common_columns <- c('Gender','Age','Censor..alive.0..dead.1.','OS')
-
-comb_clin <- list(tcga_clin, clin_325, clin_693)
+comb_clin <- list( clin_325, clin_693)
 comb_clin <- do.call(rbind, lapply(comb_clin, function(x) x[,common_columns, drop = FALSE]))
 
 #RNA
 RNA_combined <- rbind(
-  tcga_RNA[, common_genes, drop = FALSE],
   cgga_325RNA[, common_genes, drop = FALSE],
   cgga_693RNA[, common_genes, drop = FALSE]
 )
@@ -147,7 +116,6 @@ ggsurvplot(fit, data = comb_clin, xlab = "Month", ylab = "Overall survival",pval
            risk.table =TRUE)
 
 ```
-
 
 
 ```{r}
@@ -216,10 +184,10 @@ paste(which(is.na(surv_filt)),collapse = ' , ')
 
 RNA_combined_filt[is.na(RNA_combined_filt)] <- 0
 
-surv_filt <-surv_filt[-c(207 , 225 , 227 , 231),]
-RNA_combined_filt <- RNA_combined_filt[-c(207 , 225 , 227 , 231),]
-comb_clin_filt<-comb_clin_filt[-c(207 , 225 , 227 , 231),]
-path_filt <-path_df[-c(207 , 225 , 227 , 231),]
+surv_filt <-surv_filt[-c(117 , 135 , 137 , 141),]
+RNA_combined_filt <- RNA_combined_filt[-c(117 , 135 , 137 , 141),]
+comb_clin_filt<-comb_clin_filt[-c(117 , 135 , 137 , 141),]
+path_filt <-path_df[-c(117 , 135 , 137 , 141),]
 
 fit.coxph <- coxph(surv_filt ~  EGFR + Hypoxia   + TGFb  + `JAK-STAT` + TNFa, 
                    data = path_filt)
@@ -241,7 +209,7 @@ print(fit_glm)
 cvfit <- cv.glmnet(data.matrix(RNA_combined_filt),surv_filt,family="cox",type.measure = 'C')
 plot(cvfit)
 
-cfs = coef(fit_glm,s= 0.002631)
+cfs = coef(fit_glm,s= 0.003069)
 
 meaning_coefs = rownames(cfs)[cfs[,1]!= 0]
 meaning_vals = cfs[cfs[,1]!=0,]
@@ -280,32 +248,9 @@ ggplot(top_100, aes(x = reorder(variable, coefficient), y = coefficient)) +
   theme_minimal()
 
 ```
+
 ```{r}
-#tcga rsem 
-tcga_rna_raw <- read.delim(paste0(wkdir,"gbm_DATA_TCGA/data_mrna_seq_v2_rsem.txt"),check.names = FALSE)
-tcga_rna_raw[is.na(tcga_rna_raw)] <- 0
-
-tcga_rna <- tcga_rna_raw[tcga_rna_raw$Hugo_Symbol!='',]
-tcga_rna <- tcga_rna[!duplicated(tcga_rna$Hugo_Symbol),]
-rownames(tcga_rna) <- tcga_rna$Hugo_Symbol
-tcga_rna <- as.data.frame(t(tcga_rna[-1:-2]))
-
-#retrieve RNAs of interest
-tcga_rna <- tcga_rna[str_sub(row.names(tcga_rna), end = -4) %in% row.names(tcga_clin), ]
-
-max(tcga_rna)
-min(tcga_rna)
-
-tcga_rna_log2 <- apply(tcga_rna, c(1, 2), function(value) log2(value + 1))
-min(tcga_rna_log2) #0
-max(tcga_rna_log2) #19.96911
-
-#dot product
-tcga_rna_log2_subset <- tcga_rna_log2[, coef_data$variable]
 coef_data_subset <-coef_data[,-1]
-
-result1 <- tcga_rna_log2_subset %*% coef_data_subset
-rownames(result1) <- str_sub(row.names(result1), end = -4)
 
 cgga_693RNA_subset <- cgga_693RNA_log2[row.names(cgga_693RNA_log2)%in% row.names(clin_693), ]
 cgga_693RNA_subset<- cgga_693RNA_subset[, coef_data$variable]
@@ -316,7 +261,7 @@ cgga_325RNA_subset<- cgga_325RNA_log2[, coef_data$variable]
 result3 <- cgga_325RNA_subset %*% coef_data_subset
 result3
 
-result <- rbind(result1,result2,result3)
+result <- rbind(result2,result3)
 #populate values back
 comb_clin$DPD_prognosis <- result[str_sub(row.names(result)) %in% row.names(comb_clin), ]
 
@@ -338,36 +283,6 @@ ggsurvplot(fit, data = comb_clin, xlab = "Days", ylab = "Overall survival",pval 
 
 fit.coxph <- coxph(surv_obj_filt ~ Gender + Age +outcome, data = comb_clin)
 ggforest(fit.coxph, data = comb_clin)
-
-```
-```{r plot}
-# surv_plot <- ggsurvplot(
-#   fit,
-#   data = comb_clin,
-#   xlab = "Days",
-#   ylab = "Overall survival",
-#   pval = TRUE,
-#   risk.table = TRUE
-# )
-# 
-# # Save the plot as a PNG
-# ggsave(
-#   filename = paste0(outdir,"survival_plot.png"),  
-#   plot = surv_plot$plot,          
-#   device = "png",                
-#   width = 8,                     
-#   height = 4,                     
-#   dpi = 300                      
-# )
-# 
-# ggsave(
-#   filename = paste0(outdir,"risk_table.png"),
-#   plot = surv_plot$table,         # Use the risk table component
-#   device = "png",
-#   width = 8,
-#   height = 2,
-#   dpi = 300
-# )
 ```
 
 ```{r Lincs genes}
@@ -376,10 +291,10 @@ RNA_combined_lincs <- RNA_combined_filt[,lincs_genes]
 fit_glm <- glmnet(RNA_combined_lincs,surv_filt,family="cox") # , alpha = 1, standardize = TRUE, maxit = 1000
 print(fit_glm)
 
-cvfit <- cv.glmnet(data.matrix(RNA_combined_filt),surv_filt,family="cox")
+cvfit <- cv.glmnet(data.matrix(RNA_combined_filt),surv_filt,family="cox",type.measure = 'C')
 plot(cvfit)
 
-cfs = coef(fit_glm,s= 0.001533)
+cfs = coef(fit_glm,s= 0.002071)
 
 meaning_coefs = rownames(cfs)[cfs[,1]!= 0]
 meaning_vals = cfs[cfs[,1]!=0,]
@@ -399,7 +314,7 @@ ncut = 15
 vals_surv = sort(abs(meaning_vals))[1:ncut]
 print(paste(top_100$variable,collapse=" + "))
 # if we want to run coxph we have to copy-paste the string
-fit.coxph <- coxph(surv_filt ~ BZW2 + MRPS2 + MAT2A + CSK + CTTN + CHMP4A + KLHL21 + KDM3A + SIRT3 + TCTA + PLP2 + SPRED2 + RAE1 + NMT1 + EGF, data = RNA_combined_filt)
+fit.coxph <- coxph(surv_filt ~ CSNK1A1 + NMT1 + TXNL4B + MLEC + AXIN1 + PLA2G15 + SMC4 + FCHO1 + EGF + FOXJ3 + COL4A1 + TES + SIRT3 + CSK + HSPB1, data = RNA_combined_filt)
 ggforest(fit.coxph, data = RNA_combined_filt)
 
 
@@ -418,14 +333,9 @@ ggplot(top_100, aes(x = reorder(variable, coefficient), y = coefficient)) +
   theme_minimal()
 
 ```
-
 ```{r}
 #dot product
-tcga_rna_log2_subset <- tcga_rna_log2[, coef_data$variable]
 coef_data_subset <-coef_data[,-1]
-
-result1 <- tcga_rna_log2_subset %*% coef_data_subset
-rownames(result1) <- str_sub(row.names(result1), end = -4)
 
 cgga_693RNA_subset <- cgga_693RNA_log2[row.names(cgga_693RNA_log2)%in% row.names(clin_693), ]
 cgga_693RNA_subset<- cgga_693RNA_subset[, coef_data$variable]
@@ -436,7 +346,7 @@ cgga_325RNA_subset<- cgga_325RNA_log2[, coef_data$variable]
 result3 <- cgga_325RNA_subset %*% coef_data_subset
 result3
 
-result <- rbind(result1,result2,result3)
+result <- rbind(result2,result3)
 #populate values back
 comb_clin$DPD_prognosis <- result[str_sub(row.names(result)) %in% row.names(comb_clin), ]
 
@@ -459,36 +369,5 @@ ggsurvplot(fit, data = comb_clin, xlab = "Days", ylab = "Overall survival",pval 
 fit.coxph <- coxph(surv_obj_filt ~ Gender + Age +outcome, data = comb_clin)
 ggforest(fit.coxph, data = comb_clin)
 
-#write.csv(meaning_vals,file=paste0(outdir,'gbm_survival_coeffs_lincs.csv'))
 
-```
-
-```{r plot output}
-# surv_plot <- ggsurvplot(
-#   fit,
-#   data = comb_clin,
-#   xlab = "Days",
-#   ylab = "Overall survival",
-#   pval = TRUE,
-#   risk.table = TRUE
-# )
-# 
-# # Save the plot as a PNG
-# ggsave(
-#   filename = paste0(outdir,"survival_lincs_plot.png"),  
-#   plot = surv_plot$plot,          
-#   device = "png",                
-#   width = 8,                     
-#   height = 4,                     
-#   dpi = 300                      
-# )
-# 
-# ggsave(
-#   filename = paste0(outdir,"risk_table_lincs.png"),
-#   plot = surv_plot$table,         # Use the risk table component
-#   device = "png",
-#   width = 8,
-#   height = 2,
-#   dpi = 300
-# )
 ```
