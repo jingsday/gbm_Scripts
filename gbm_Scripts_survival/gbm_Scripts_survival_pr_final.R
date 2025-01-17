@@ -49,6 +49,7 @@ common_genes <- intersect(colnames(cgga_325RNA), colnames(cgga_693RNA))
 cgga_693RNA[,common_genes]
 
 comb_clin <- rbind(clin_325, clin_693)
+comb_clin$Gender <- trimws(comb_clin$Gender)
 
 #RNA
 common_genes <- intersect(colnames(cgga_693RNA_log2), colnames(cgga_325RNA_log2))
@@ -119,9 +120,31 @@ fit.coxph <- coxph(surv_filt ~  MAPK+NFkB+p53+PI3K+TGFb,
                    data = path_filt)
 ggforest(fit.coxph, data = path_filt)
 
+
+
 library("glmpath")
 library("glmnet")
 library("penalized")
+
+# glmnet over progeny
+fit_glm <- glmnet(path_filt,surv_filt,family="cox") # , alpha = 1, standardize = TRUE, maxit = 1000
+print(fit_glm)
+# analysing results
+cfs = coef(fit_glm,s=0.000925)
+meaning_coefs = rownames(cfs)[cfs[,1]!= 0]
+meaning_vals = cfs[cfs[,1]!=0,]
+
+
+coef_data <-data.frame(variable=meaning_coefs,coefficient=meaning_vals)
+# Create bar plot
+ggplot(coef_data, aes(x = reorder(variable, coefficient), y = coefficient)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  coord_flip() +  # Rotate axis labels
+  labs(title = "Coefficients from glmnet Model", 
+       x = "Pathways", y = "Coefficient") +
+  theme_minimal()
+
+
 
 stv <- read_excel('/home/jing/Phd_project/project_GBM/gbm_OUTPUT/gbm_OUTPUT_LINCS/ALL_DATA_2020_Jing_gbm_del.xlsx',
                   sheet = 'STVs')
@@ -176,8 +199,52 @@ ggsurvplot(fit, data = comb_clin, xlab = "Days", ylab = "Overall survival",pval 
            risk.table =TRUE)
 
 
+
 fit.coxph <- coxph(surv_obj_filt ~ Gender + Age +Histology+outcome , data = comb_clin)
 ggforest(fit.coxph, data = comb_clin)
+
+
+forest_plot <- ggforest(fit.coxph, data = comb_clin)
+
+# Save the forest plot as an image
+ggsave(paste0(outdir,"forest_plot.png"), plot = forest_plot, width = 10, height = 6, dpi = 300)
+
+
+library(survival)
+library(survminer)
+library(dplyr)
+library(ggplot2)
+library(stringr)
+library(readxl)
+
+surv_plot <- ggsurvplot(
+  fit,
+  data = comb_clin,
+  xlab = "Days",
+  ylab = "Overall survival",
+  pval = TRUE,
+  risk.table = TRUE
+)
+
+# Save the plot as a PNG
+ggsave(
+  filename = paste0(outdir,"survival_final_plot.png"),
+  plot = surv_plot$plot,
+  device = "png",
+  width = 8,
+  height = 4,
+  dpi = 300
+)
+
+ggsave(
+  filename = paste0(outdir,"risk_final_table.png"),
+  plot = surv_plot$table,         # Use the risk table component
+  device = "png",
+  width = 8,
+  height = 2,
+  dpi = 300
+)
+
 
 #testing on tcga 
 #clin
@@ -250,3 +317,60 @@ fit.coxph <- coxph(surv_obj ~ SEX + AGE +outcome +RADIATION_THERAPY, data = tcga
 ggforest(fit.coxph, data = tcga_clin)                                        
 
 colnames(tcga_clin)
+
+
+surv_plot <- ggsurvplot(
+  fit,
+  data = comb_clin,
+  xlab = "Days",
+  ylab = "Overall survival",
+  pval = TRUE,
+  risk.table = TRUE
+)
+
+# Save the plot as a PNG
+ggsave(
+  filename = paste0(outdir,"survival_final_plot.png"),
+  plot = surv_plot$plot,
+  device = "png",
+  width = 8,
+  height = 4,
+  dpi = 300
+)
+
+ggsave(
+  filename = paste0(outdir,"risk_final_table.png"),
+  plot = surv_plot$table,         # Use the risk table component
+  device = "png",
+  width = 8,
+  height = 2,
+  dpi = 300
+)
+
+
+
+# Combine both source CGGA and TCGA patients profiles 
+
+#clin columns
+tcga_clin$Gender <- tcga_clin$SEX
+tcga_clin$Age <- tcga_clin$AGE
+tcga_clin$Censor..alive.0..dead.1. <- tcga_clin$OS_STATUS
+tcga_clin$OS <- tcga_clin$OS_MONTHS*30
+colnames(tcga_clin)
+common_columns <- c('Gender','Age','Censor..alive.0..dead.1.','OS')
+
+nano_clin <- list(tcga_clin, clin_325, clin_693)
+nano_clin <- do.call(rbind, lapply(nano_clin, function(x) x[,common_columns, drop = FALSE]))
+
+library(ggplot2)
+
+# Age distribution by Gender
+ggplot(nano_clin, aes(x = Age, fill = Gender)) +
+  geom_histogram(binwidth = 5, alpha = 0.7, position = "dodge") +
+  facet_wrap(~ Censor..alive.0..dead.1.) +
+  labs(
+    title = "Patient Nanogram",
+    x = "Age",
+    y = "Count"
+  ) +
+  theme_minimal()
