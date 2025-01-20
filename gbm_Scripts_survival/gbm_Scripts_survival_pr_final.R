@@ -198,10 +198,51 @@ ggforest(fit.coxph, data = comb_clin)
 
 forest_plot <- ggforest(fit.coxph, data = comb_clin)
 
-#full gene set not necessarily better
+#Conclusions: full gene set not necessarily better
+
+
+#Using previous STV from TCGA, to check if it applies to CGGA
+common_genes <- intersect(colnames(RNA_combined_filt), stv$Gene)
+
+cgga_693RNA_subset <- cgga_693RNA_log2[row.names(cgga_693RNA_log2)%in% row.names(clin_693), ]
+cgga_693RNA_subset<- cgga_693RNA_subset[, common_genes]
+
+result2 <- cgga_693RNA_subset %*% vector
+
+
+cgga_325RNA_subset<- cgga_325RNA_log2[, common_genes]
+result3 <- cgga_325RNA_subset %*% vector
+
+result <- rbind(result2,result3)
+#populate values back
+
+comb_clin$DPD_prognosis <- result[str_sub(row.names(result)) %in% row.names(comb_clin), ]
+
+
+hist(comb_clin$DPD_prognosis)
+#assign to positive,negative (I only have positive and decided to select a positive threshold)
+comb_clin$outcome <- ifelse(comb_clin$DPD_prognosis > 0, "Positive",
+                            ifelse(comb_clin$DPD_prognosis == 0, "0", "Negative"))
+
+
+### KP and hazard ratio
+surv_obj_filt <- Surv(time = comb_clin$OS, 
+                      event = comb_clin$Censor..alive.0..dead.1.=="1")
+
+fit <- survfit(surv_obj_filt ~ outcome , data = comb_clin)
+ggsurvplot(fit, data = comb_clin, xlab = "Days", ylab = "Overall survival",pval = TRUE,
+           risk.table =TRUE)
 
 
 
+fit.coxph <- coxph(surv_obj_filt ~ Gender + Age +Histology+outcome , data = comb_clin)
+ggforest(fit.coxph, data = comb_clin)
+
+
+forest_plot <- ggforest(fit.coxph, data = comb_clin)
+
+# Save the forest plot as an image
+ggsave(paste0(outdir,"forest_plot.png"), plot = forest_plot, width = 10, height = 6, dpi = 300)
 
 
 
@@ -254,6 +295,8 @@ cgga_693RNA_subset <- cgga_693RNA_log2[row.names(cgga_693RNA_log2)%in% row.names
 cgga_693RNA_subset<- cgga_693RNA_subset[, coef_data$variable]
 coef_data_subset <- coef_data[,-1]
 result2 <- cgga_693RNA_subset %*% coef_data_subset
+result2 <- cgga_693RNA_subset %*% as.numeric(stv$GBM_survival)
+
 
 cgga_325RNA_subset<- cgga_325RNA_log2[, coef_data$variable]
 result3 <- cgga_325RNA_subset %*% coef_data_subset
