@@ -144,7 +144,82 @@ ggplot(coef_data, aes(x = reorder(variable, coefficient), y = coefficient)) +
        x = "Pathways", y = "Coefficient") +
   theme_minimal()
 
+#Full gene set
 
+fit_glm <- glmnet(RNA_combined_filt, surv_filt, family="cox")# , alpha = 1, standardize = TRUE, maxit = 1000)
+print(fit_glm)
+
+cvfit <- cv.glmnet(data.matrix(RNA_combined_filt),surv_filt,family="cox",type.measure = 'C')
+plot(cvfit)
+
+cfs = coef(fit_glm,s= 0.002168)
+
+meaning_coefs = rownames(cfs)[cfs[,1]!= 0]
+meaning_vals = cfs[cfs[,1]!=0,]
+#write.csv(meaning_vals,file=paste0(outdir,'gbm_survival_coeffs_full.csv'))
+
+length(meaning_vals)
+coef_data <-data.frame(variable=meaning_coefs,coefficient=meaning_vals)
+
+
+cgga_693RNA_subset <- cgga_693RNA_log2[row.names(cgga_693RNA_log2)%in% row.names(clin_693), ]
+cgga_693RNA_subset<- cgga_693RNA_subset[, coef_data$variable]
+coef_data_subset <- coef_data[,-1]
+result2 <- cgga_693RNA_subset %*% coef_data_subset
+
+cgga_325RNA_subset<- cgga_325RNA_log2[, coef_data$variable]
+result3 <- cgga_325RNA_subset %*% coef_data_subset
+
+result <- rbind(result2,result3)
+#populate values back
+
+comb_clin$DPD_prognosis <- result[str_sub(row.names(result)) %in% row.names(comb_clin), ]
+
+
+hist(comb_clin$DPD_prognosis)
+#assign to positive,negative (I only have positive and decided to select a positive threshold)
+comb_clin$outcome <- ifelse(comb_clin$DPD_prognosis > 0, "Positive",
+                            ifelse(comb_clin$DPD_prognosis == 0, "0", "Negative"))
+
+
+### KP and hazard ratio
+surv_obj_filt <- Surv(time = comb_clin$OS, 
+                      event = comb_clin$Censor..alive.0..dead.1.=="1")
+
+fit <- survfit(surv_obj_filt ~ outcome , data = comb_clin)
+ggsurvplot(fit, data = comb_clin, xlab = "Days", ylab = "Overall survival",pval = TRUE,
+           risk.table =TRUE)
+
+
+
+fit.coxph <- coxph(surv_obj_filt ~ Gender + Age +Histology+outcome , data = comb_clin)
+ggforest(fit.coxph, data = comb_clin)
+
+
+forest_plot <- ggforest(fit.coxph, data = comb_clin)
+
+#full gene set not necessarily better
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#Lincs genes 
 
 stv <- read_excel('/home/jing/Phd_project/project_GBM/gbm_OUTPUT/gbm_OUTPUT_LINCS/ALL_DATA_2020_Jing_gbm_del.xlsx',
                   sheet = 'STVs')
@@ -154,17 +229,22 @@ common_genes <- intersect(colnames(RNA_combined_filt), stv$Gene)
 RNA_combined_lincs <- RNA_combined_filt[,common_genes]
 
 
-fit_glm <- glmnet(RNA_combined_lincs, surv_filt, family="cox")# , alpha = 1, standardize = TRUE, maxit = 1000)
+fit_glm <- glmnet(RNA_combined_lincs, surv_filt, family="cox",nlambda = 200)# , alpha = 1, standardize = TRUE, maxit = 1000)
 print(fit_glm)
 
-cvfit <- cv.glmnet(data.matrix(RNA_combined_filt),surv_filt,family="cox",type.measure = 'C')
+cvfit <- cv.glmnet(data.matrix(RNA_combined_lincs),surv_filt,family="cox",type.measure = 'C',nlambda=200)
 plot(cvfit)
 
-cfs = coef(fit_glm,s= 0.001543)
+cvfit$
 
+cvfit$lambda.1se
+print(lambda_1se)
+
+cfs = coef(fit_glm,s=  0.001654)
+#By increasing gene number it doesn't help either
 meaning_coefs = rownames(cfs)[cfs[,1]!= 0]
 meaning_vals = cfs[cfs[,1]!=0,]
-#write.csv(meaning_vals,file=paste0(outdir,'gbm_survival_coeffs_full.csv'))
+#write.csv(meaning_vals,file=paste0(outdir,'gbm_survival_final_coeffs_lincs.csv'))
 
 length(meaning_vals)
 coef_data <-data.frame(variable=meaning_coefs,coefficient=meaning_vals)
@@ -289,18 +369,18 @@ max(tcga_rna_log2) #19.96911
 
 
 #dot product
-intersect(colnames(tcga_rna_log2),stv$Gene)
 
 tcga_common_genes <- intersect(colnames(tcga_rna_log2),coef_data$variable)
 tcga_rna_log2_subset <- tcga_rna_log2[, tcga_common_genes]
 
 intersect(rownames(coef_data),tcga_common_genes)
 
-result1 <- tcga_rna_log2_subset %*% coef_data[tcga_common_genes,]$coefficient
+result1 <- tcga_rna_log2_subset %*% as.numeric(coef_data[tcga_common_genes,]$coefficient)
 
 rownames(result1) <- str_sub(row.names(result1), end = -4)
 
 tcga_clin$DPD_prognosis <- result1[str_sub(row.names(result1)) %in% row.names(tcga_clin), ]
+
 
 hist(tcga_clin$DPD_prognosis)
 #assign to positive,negative (I only have positive and decided to select a positive threshold)
@@ -308,6 +388,9 @@ tcga_clin$outcome <- ifelse(tcga_clin$DPD_prognosis > 0, "Positive",
                             ifelse(tcga_clin$DPD_prognosis == 0, "0", "Negative"))
 
 
+
+surv_obj <- Surv(time = tcga_clin$OS_MONTHS, 
+                 event = tcga_clin$OS_STATUS=="1:DECEASED")
 fit <- survfit(surv_obj ~ outcome , data = tcga_clin)
 ggsurvplot(fit, data = tcga_clin, xlab = "Days", ylab = "Overall survival",pval = TRUE,
            risk.table =TRUE)
