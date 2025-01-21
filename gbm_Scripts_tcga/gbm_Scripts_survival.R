@@ -1,3 +1,4 @@
+#Not this one either
 library(survival)
 library(survminer)
 library(dplyr)
@@ -6,11 +7,12 @@ library(stringr)
 
 
 setwd("/Users/lidiayung/project/project_gbm/gbm_DATA/gbm_DATA_tcga_pan_can_atlas_2018")
+paste0(wkdir,"gbm_DATA_TCGA/data_mrna_seq_v2_rsem.txt")
 
-clin_raw<- read.delim("data_clinical_patient.txt", sep = '\t',skip = 4)
+clin_raw<- read.delim("/home/jing/Phd_project/project_GBM/gbm_DATA/gbm_DATA_TCGA/data_clinical_patient.txt", sep = '\t',skip = 4)
 rownames(clin_raw) <- clin_raw$PATIENT_ID
 
-RNA_raw <- read.delim("data_mrna_seq_v2_rsem_zscores_ref_all_samples.txt",check.names = FALSE)
+RNA_raw <- read.delim("/home/jing/Phd_project/project_GBM/gbm_DATA/gbm_DATA_TCGA/data_mrna_seq_v2_rsem_zscores_ref_all_samples.txt",check.names = FALSE)
 RNA_raw[is.na(RNA_raw)] <- 0
 RNA_raw <- RNA_raw[RNA_raw$Hugo_Symbol!='',]
 RNA_raw <- RNA_raw[!duplicated(RNA_raw$Hugo_Symbol),]
@@ -21,7 +23,7 @@ clin <- clin_raw[str_sub(row.names(RNA), end = -4),]
 
 clin$SAMPLE_TYPE ="Primary"
 #recurrent primary
-clin_sample <- read.delim("data_clinical_sample.txt", sep = '\t',skip = 4)
+clin_sample <- read.delim("/home/jing/Phd_project/project_GBM/gbm_DATA/gbm_DATA_TCGA/data_clinical_sample.txt", sep = '\t',skip = 4)
 
 recurrent <-clin_sample[clin_sample$SAMPLE_TYPE=="Recurrence",]
 recurrent$PATIENT_ID

@@ -1,0 +1,43 @@
+---
+title: "gbm_Scripts_tcga_p_r"
+author: "Jing"
+date: "2025-01-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(survival)
+library(survminer)
+library(dplyr)
+library(ggplot2)
+library(stringr)
+library(readxl)
+
+wkdir<- ("/home/jing/Phd_project/project_GBM/gbm_DATA/")
+outdir<- ('/home/jing/Phd_project/project_GBM/gbm_OUTPUT/gbm_OUTPUT_survival/')
+
+```
+
+```{r}
+#IDH wild type not registered fully
+clin_raw<- read.delim(paste0(wkdir,"gbm_DATA_TCGA/data_clinical_patient.txt"), sep = '\t',skip = 4,row.names = 'PATIENT_ID')
+table(clin_raw$SUBTYPE)
+
+clin_sample <- read.delim(paste0(wkdir,"gbm_DATA_TCGA/data_clinical_sample.txt"), sep = '\t',skip = 4)
+table(clin_sample$SAMPLE_TYPE)
+
+clin_raw <-clin_raw[clin_raw$SUBTYPE!='GBM_IDHmut-non-codel',]
+
+RNA_raw <- read.delim(paste0(wkdir,'gbm_DATA_TCGA/data_mrna_seq_v2_rsem_zscores_ref_all_samples.txt'),check.names = FALSE)
+RNA_raw[is.na(RNA_raw)] <- 0
+RNA_raw <- RNA_raw[RNA_raw$Hugo_Symbol!='',]
+RNA_raw <- RNA_raw[!duplicated(RNA_raw$Hugo_Symbol),]
+rownames(RNA_raw) <- RNA_raw$Hugo_Symbol
+RNA <- as.data.frame(t(RNA_raw[-1:-2]))
+
+# Align clinical data:
+clin <- clin_raw[row.names(clin_raw)%in% str_sub(row.names(RNA), end = -4),]
+RNA <- RNA[str_sub(row.names(RNA), end = -4) %in% row.names(clin_raw), ]
+```
+
