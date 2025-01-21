@@ -67,8 +67,8 @@ ls()
 
 merged_seurat <- merge(
   x = SF11082,y = c(SF11488,SF11916,SF12382,SF2777,
-                   SF2979,SF2990,SF3073,SF3076,SF3243,
-                   SF3391,SF3448,SF9358,SF9494,SF9798,SF9962),
+                    SF2979,SF2990,SF3073,SF3076,SF3243,
+                    SF3391,SF3448,SF9358,SF9494,SF9798,SF9962),
   add.cell.ids = ls()[5:20],project = 'GBM')
 
 
@@ -87,7 +87,6 @@ merged_seurat@meta.data <- separate(merged_seurat@meta.data, col = 'sample', int
 merged_seurat$mitoPercent <- PercentageFeatureSet(merged_seurat, pattern='^Mt-')
 
 VlnPlot(merged_seurat, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
-ggsave('features.jpg')
 
 
 merged_seurat_filtered <- subset(merged_seurat, subset = nFeature_RNA > 200 &
@@ -110,3 +109,4 @@ anchors <- FindIntegrationAnchors(object.list = obj.list, normalization.method =
 seurat.integrated <- IntegrateData(anchorset = anchors, normalization.method = "SCT")
 
 seurat.integrated
+saveRDS(seurat.integrated,file='~/Phd_project/project_GBM/gbm_OUTPUT/gbm_OUTPUT_sctransform/gbm_OUTPUT_sct_intergration.rds')
