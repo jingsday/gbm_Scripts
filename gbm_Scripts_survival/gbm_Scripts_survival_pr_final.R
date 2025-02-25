@@ -1,3 +1,12 @@
+library(survival)
+library(survminer)
+library(dplyr)
+library(ggplot2)
+library(stringr)
+library(readxl)
+
+
+wkdir<- "/home/jing/Phd_project/project_GBM/gbm_DATA/"
 clin_693_raw <- read.delim(paste0(wkdir,"gbm_DATA_CGGA/CGGA.mRNAseq_693_clinical.20200506.txt"), 
                            sep = '\t')
 clin_693 <- clin_693_raw[clin_693_raw$IDH_mutation_status %in% c('Wildtype'),]
