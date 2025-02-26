@@ -509,3 +509,63 @@ ggplot(nano_clin, aes(x = Age, fill = Gender)) +
     y = "Count"
   ) +
   theme_minimal()
+
+#Check MAPK and p53 activities 
+#whether there are groups of patients with single mutations that affect survival significantly
+#Results: 1 with high MAPK activity and 269 with low
+#Results: 2 with 23 high tp53 activity, but no significant group
+#Results:  no significant dif among hypoxia groups
+
+# plotting Kaplan-Mayer curves
+pathway = 'Hypoxia'
+pathway_data = path_filt$Hypoxia
+# sort age 
+uni_path = sort(unique(pathway_data))
+# store results
+results_path = matrix(1,length(uni_path))
+
+# do a for loop for every unique value of age mat
+for (i in 2:(length(uni_path)-1)){ # Starting from 2 because the first element would yield no elements higher than.
+  path_i = 1*(pathway_data>uni_path[i])
+  # survdiff is the function from the survival package 
+  logrank = survdiff(surv_filt ~ path_i)
+  # store in results_age
+  results_path[i] = logrank$pvalue
+}
+# Plot unique elements of age against p-value
+plot(uni_path, results_path, log = 'y')
+# Select minimum P-value
+min_p_path = which.min(results_path)
+# here are 1 good thresholds, -1 
+opt_thr = uni_path[min_p_path]
+#opt_JAK = opt_thr
+#opt_thr = 0.0
+# I recalculated the P-value as a sanity check
+pval = survdiff(surv_filt ~ pathway_data>opt_thr)$pvalue
+nplus = sum(pathway_data>opt_thr)   # how many patients we have in high group
+nminus = sum(pathway_data<opt_thr)   # how many patients we have in low group
+# fit Kaplan Meier model
+path_filt <- path_filt %>% mutate(Hypoxia = ifelse(Hypoxia >= 1, "high", ifelse(Hypoxia < 1.001*opt_thr,"low","intermediate")))
+nhigh = sum(pathway_data>1)
+ninter = sum((pathway_data<1) & (pathway_data > 1.001*opt_thr))
+nlow = sum(pathway_data<1.001*opt_thr)
+#KM = survfit(surv_filt ~ pathway_data>opt_thr,data = path_filt)
+KM = survfit(surv_filt ~ Hypoxia,data = path_filt)
+# Plot Kaplan Meier 
+#plot(KM, lwd = 3, col = c(1,2), cex.axis = 1.5, xlab = 'Months', ylab = 'Survival Probability' , cex.lab = 1.5)
+#ggsurvplot(KM, data = path_filt,pval = TRUE,xlab = 'Overall survival time, months',
+#           legend.labs=c(paste('Low ',pathway,' activity, ',nminus,' patient(s)',sep = ''),paste('High ',pathway,' activity, ',nplus,' patient(s)',sep = '')),
+#           palette = c('blue','red'),legend.title="")
+p <- ggsurvplot(KM, data = path_filt,pval = TRUE,xlab = 'Overall survival time, months',
+                legend.labs=c(paste("High MAPK activity,\n",nhigh," patients",sep=""),paste("Intermediate MAPK activity,\n",ninter," patients",sep=""),paste("Low MAPK activity,\n",nlow," patients",sep="")),
+                legend.title=""
+)
+
+ggpar(p, 
+      font.main = c(13, "bold"),
+      font.x = c(16, "bold"),
+      font.y = c(16, "bold"),
+      font.caption = c(16, "bold"), 
+      font.legend = c(13, "bold"), 
+      font.tickslab = c(14, "bold"))
+
