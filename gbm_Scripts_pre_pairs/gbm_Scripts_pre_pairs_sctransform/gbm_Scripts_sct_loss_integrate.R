@@ -32,7 +32,7 @@ merged_seurat <- merge(
         SF2979,SF2990,SF3073,SF3076,SF3243,
          SF3391,SF3448,SF9358,SF9494,SF9798,
         SF9962),
-  add.cell.ids = ls()[6:21],
+  add.cell.ids = ls()[4:19],
   project = 'GBM'
 )
 
@@ -57,4 +57,5 @@ anchors <- FindIntegrationAnchors(object.list = obj.list, normalization.method =
 seurat.integrated <- IntegrateData(anchorset = anchors, normalization.method = "SCT")
 
 #Data ready to be retrieved here 
-saveRDS(seurat.integrated,"~/project_GBM/gbm_OUTPUT/gbm_project_integrated.rds") 
+saveRDS(seurat.integrated,"/home/jing/Phd_project/project_GBM/gbm_OUTPUT_sctransform/gbm_project_integrated.rds") 
+head(seurat.integrated@meta.data)
