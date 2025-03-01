@@ -122,11 +122,9 @@ seurat.integrated <- RunUMAP(seurat.integrated, reduction = "pca", dims = 1:30)
 seurat.integrated <- FindNeighbors(seurat.integrated, dims = 1:30, verbose = FALSE)
 seurat.integrated <- FindClusters(seurat.integrated, resolution = 0.5)
 
-head(seurat.integrated@meta.data@seurat)
-
 
 p1 <- DimPlot(seurat.integrated, reduction = "umap")
 p2 <- DimPlot(seurat.integrated, reduction = "umap", group.by = "Sample", 
-              repel = TRUE,cols=c('red','green','blue','yellow','brown','orange','purple'))
+              repel = TRUE)
 
 p1 + p2
