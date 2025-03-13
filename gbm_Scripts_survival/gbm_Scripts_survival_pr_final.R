@@ -387,7 +387,7 @@ tcga_clin_raw <- read.delim(paste0(wkdir,"gbm_DATA_TCGA/data_clinical_patient.tx
 #clin profiles
 clin_sample <- read.delim(paste0(wkdir,"gbm_DATA_TCGA/data_clinical_sample.txt"), sep = '\t',skip = 4)
 table(clin_sample$SAMPLE_TYPE)
-
+table(clin_sample$TUMOR_TYPE)
 tcga_clin <-tcga_clin_raw[tcga_clin_raw$SUBTYPE!='GBM_IDHmut-non-codel',]
 
 
