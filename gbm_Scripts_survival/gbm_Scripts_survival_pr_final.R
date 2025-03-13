@@ -9,6 +9,7 @@ library(readxl)
 wkdir<- "/home/jing/Phd_project/project_GBM/gbm_DATA/"
 clin_693_raw <- read.delim(paste0(wkdir,"gbm_DATA_CGGA/CGGA.mRNAseq_693_clinical.20200506.txt"), 
                            sep = '\t')
+table(clin_693_raw$IDH_mutation_status)
 clin_693 <- clin_693_raw[clin_693_raw$IDH_mutation_status %in% c('Wildtype'),]
 clin_693 <- clin_693[clin_693$Grade %in% c('WHO IV'),]
 
@@ -389,9 +390,20 @@ table(clin_sample$SAMPLE_TYPE)
 
 tcga_clin <-tcga_clin_raw[tcga_clin_raw$SUBTYPE!='GBM_IDHmut-non-codel',]
 
+
+
 tcga_rna_raw <- read.delim(paste0(wkdir,"gbm_DATA_TCGA/data_mrna_seq_v2_rsem.txt"),check.names = FALSE)
 tcga_rna_raw[is.na(tcga_rna_raw)] <- 0
+tcga_rna_raw <- tcga_rna_raw[tcga_rna_raw$Hugo_Symbol!='',]
+tcga_rna_raw <- tcga_rna_raw[!duplicated(tcga_rna_raw$Hugo_Symbol),]
+rownames(tcga_rna_raw) <- tcga_rna_raw$Hugo_Symbol
 
+tcga_rna_raw <- as.data.frame(t(tcga_rna_raw[-1:-2]))
+  
+tcga_clin <- tcga_clin[rownames(tcga_clin) %in% str_sub(row.names(tcga_rna_raw),end=-4),]
+tcga_rna_raw <- tcga_rna_raw[str_sub(rownames(tcga_rna_raw),end=-4) %in% row.names(tcga_clin),]
+
+intersect(str_sub(rownames(tcga_rna_raw),end=-4),rownames(tcga_clin))
 
 surv_obj <- Surv(time = tcga_clin$OS_MONTHS, 
                  event = tcga_clin$OS_STATUS=="1:DECEASED")
@@ -408,8 +420,12 @@ tcga_rna <- tcga_rna[!duplicated(tcga_rna$Hugo_Symbol),]
 rownames(tcga_rna) <- tcga_rna$Hugo_Symbol
 tcga_rna <- as.data.frame(t(tcga_rna[-1:-2]))
 
+
+tcga_clin <- tcga_clin[tcga_clin$SUBTYPE == 'GBM_IDHwt',]
+table(tcga_clin$SUBTYPE)
 #retrieve RNAs of interest
 tcga_rna <- tcga_rna[str_sub(row.names(tcga_rna), end = -4) %in% row.names(tcga_clin), ]
+
 tcga_clin <- tcga_clin[str_sub(row.names(tcga_rna), end = -4),]
 
 max(tcga_rna)
@@ -438,8 +454,9 @@ hist(tcga_clin$DPD_prognosis)
 #assign to positive,negative (I only have positive and decided to select a positive threshold)
 tcga_clin$outcome <- ifelse(tcga_clin$DPD_prognosis > 0, "Positive",
                             ifelse(tcga_clin$DPD_prognosis == 0, "0", "Negative"))
-
-
+rownames(clin_sample) <- 
+clin_sample[rownames(clin_sample) %in% rownames(tcga_clin)]
+table(tcga_clin)
 
 surv_obj <- Surv(time = tcga_clin$OS_MONTHS, 
                  event = tcga_clin$OS_STATUS=="1:DECEASED")
@@ -449,6 +466,7 @@ ggsurvplot(fit, data = tcga_clin, xlab = "Days", ylab = "Overall survival",pval 
 
 
 fit.coxph <- coxph(surv_obj ~ SEX + AGE +outcome +RADIATION_THERAPY, data = tcga_clin)
+
 ggforest(fit.coxph, data = tcga_clin)                                        
 
 colnames(tcga_clin)
