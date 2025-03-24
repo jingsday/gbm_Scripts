@@ -454,7 +454,7 @@ hist(tcga_clin$DPD_prognosis)
 #assign to positive,negative (I only have positive and decided to select a positive threshold)
 tcga_clin$outcome <- ifelse(tcga_clin$DPD_prognosis > 0, "Positive",
                             ifelse(tcga_clin$DPD_prognosis == 0, "0", "Negative"))
-rownames(clin_sample) <- 
+rownames(clin_sample) <- clin_sample$SAMPLE_ID
 clin_sample[rownames(clin_sample) %in% rownames(tcga_clin)]
 table(tcga_clin)
 
