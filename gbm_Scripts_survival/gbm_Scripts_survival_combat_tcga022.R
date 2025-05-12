@@ -57,7 +57,7 @@ comb_clin <- rbind(clin_325, clin_693)
 comb_clin$Gender <- trimws(comb_clin$Gender)
 
 # Ensure gene names match — intersect common genes
-common_genes <- intersect(colnames(cgga_325RNA), colnames(cgga_693RNA))#23271 shared genes
+common_genes <- intersect(colnames(cgga_325RNA), colnames(cgga_693RNA),colnames(tcga_rna))#23271 shared genes
 # Transpose so that genes are rows and samples are columns
 expr_693 <- as.matrix(t(cgga_693RNA[, common_genes]))
 expr_325 <- as.matrix(t(cgga_325RNA[,common_genes]))
@@ -73,6 +73,32 @@ cgga693_adjusted_counts <- t(adjusted_counts[,colnames(adjusted_counts)%in% coln
 
 cgga_325RNA_log2 <- apply(cgga325_adjusted_counts, c(1, 2), function(value) log2(value + 1))
 cgga_693RNA_log2 <- apply(cgga693_adjusted_counts, c(1, 2), function(value) log2(value + 1))
+
+
+#TCGA
+tcga_clin_raw <- read.delim(paste0(wkdir,"gbm_DATA_TCGA/data_clinical_patient.txt"), 
+                            sep = '\t',skip = 4,row.names = 'PATIENT_ID')
+
+#clin profiles
+clin_sample <- read.delim(paste0(wkdir,"gbm_DATA_TCGA/data_clinical_sample.txt"), sep = '\t',skip = 4)
+table(clin_sample$SAMPLE_TYPE)
+table(clin_sample$TUMOR_TYPE)
+tcga_clin <-tcga_clin_raw[tcga_clin_raw$SUBTYPE!='GBM_IDHmut-non-codel',]
+
+
+tcga_rna_raw <- read.delim(paste0(wkdir,"gbm_DATA_TCGA/data_mrna_seq_v2_rsem.txt"),check.names = FALSE)
+tcga_rna_raw[is.na(tcga_rna_raw)] <- 0
+tcga_rna_raw <- tcga_rna_raw[tcga_rna_raw$Hugo_Symbol!='',]
+tcga_rna_raw <- tcga_rna_raw[!duplicated(tcga_rna_raw$Hugo_Symbol),]
+rownames(tcga_rna_raw) <- tcga_rna_raw$Hugo_Symbol
+
+tcga_rna_raw <- as.data.frame(t(tcga_rna_raw[-1:-2]))
+
+tcga_clin <- tcga_clin[rownames(tcga_clin) %in% str_sub(row.names(tcga_rna_raw),end=-4),]
+tcga_rna_raw <- tcga_rna_raw[str_sub(rownames(tcga_rna_raw),end=-4) %in% row.names(tcga_clin),]
+
+intersect(str_sub(rownames(tcga_rna_raw),end=-4),rownames(tcga_clin))
+
 
 
 
@@ -242,3 +268,134 @@ surv_obj_filt <- Surv(time = comb_clin$OS,
 fit <- survfit(surv_obj_filt ~ outcome , data = comb_clin)
 ggsurvplot(fit, data = comb_clin, xlab = "Days", ylab = "Overall survival",pval = TRUE,
            risk.table =TRUE)
+
+#
+outdir <- '/home/jing/Phd_project/project_GBM/gbm_OUTPUT/gbm_OUTPUT_survival/'
+surv_plot <- ggsurvplot(
+  fit,
+  data = comb_clin,
+  xlab = "Days",
+  ylab = "Overall survival",
+  pval = TRUE,
+  risk.table = TRUE
+)
+
+# Save the plot as a PNG
+ggsave(
+  filename = paste0(outdir,"survival_final_plot.png"),
+  plot = surv_plot$plot,
+  device = "png",
+  width = 8,
+  height = 4,
+  dpi = 300
+)
+
+ggsave(
+  filename = paste0(outdir,"risk_final_table.png"),
+  plot = surv_plot$table,         # Use the risk table component
+  device = "png",
+  width = 8,
+  height = 2,
+  dpi = 300
+)
+
+#
+#clin
+tcga_clin_raw <- read.delim(paste0(wkdir,"gbm_DATA_TCGA/data_clinical_patient.txt"), 
+                            sep = '\t',skip = 4,row.names = 'PATIENT_ID')
+
+#clin profiles
+clin_sample <- read.delim(paste0(wkdir,"gbm_DATA_TCGA/data_clinical_sample.txt"), sep = '\t',skip = 4)
+table(clin_sample$SAMPLE_TYPE)
+table(clin_sample$TUMOR_TYPE)
+tcga_clin <-tcga_clin_raw[tcga_clin_raw$SUBTYPE!='GBM_IDHmut-non-codel',]
+
+
+tcga_rna_raw <- read.delim(paste0(wkdir,"gbm_DATA_TCGA/data_mrna_seq_v2_rsem.txt"),check.names = FALSE)
+tcga_rna_raw[is.na(tcga_rna_raw)] <- 0
+tcga_rna_raw <- tcga_rna_raw[tcga_rna_raw$Hugo_Symbol!='',]
+tcga_rna_raw <- tcga_rna_raw[!duplicated(tcga_rna_raw$Hugo_Symbol),]
+rownames(tcga_rna_raw) <- tcga_rna_raw$Hugo_Symbol
+
+tcga_rna_raw <- as.data.frame(t(tcga_rna_raw[-1:-2]))
+
+tcga_clin <- tcga_clin[rownames(tcga_clin) %in% str_sub(row.names(tcga_rna_raw),end=-4),]
+tcga_rna_raw <- tcga_rna_raw[str_sub(rownames(tcga_rna_raw),end=-4) %in% row.names(tcga_clin),]
+
+intersect(str_sub(rownames(tcga_rna_raw),end=-4),rownames(tcga_clin))
+
+
+
+
+#surv_obj 
+surv_obj <- Surv(time = tcga_clin$OS_MONTHS, 
+                 event = tcga_clin$OS_STATUS=="1:DECEASED")
+fit <- survfit(surv_obj ~ 1, data = tcga_clin)
+ggsurvplot(fit, data = tcga_clin, xlab = "Month", ylab = "Overall survival", surv.median.line = 'hv',risk.table = TRUE)
+
+
+tcga_rna <- tcga_rna_raw
+rownames(tcga_rna) <- rownames(tcga_rna)
+
+tcga_clin <- tcga_clin[tcga_clin$SUBTYPE == 'GBM_IDHwt',]
+table(tcga_clin$SUBTYPE)
+#retrieve RNAs of interest
+tcga_rna <- tcga_rna[str_sub(row.names(tcga_rna), end = -4) %in% row.names(tcga_clin), ]
+
+# Remove rows whose rownames end with "-2"
+rownames(tcga_rna)[grepl("-02$", rownames(tcga_rna))]
+#"TCGA-06-0125-02" "TCGA-06-0171-02" "TCGA-06-0190-02" 
+#"TCGA-06-0210-02" "TCGA-06-0211-02" "TCGA-14-1034-02"
+
+check <- c("TCGA-06-0125-02", "TCGA-06-0171-02", "TCGA-06-0190-02", "TCGA-06-0210-02" ,
+           "TCGA-06-0211-02" ,"TCGA-14-1034-02")
+tcga_clin[rownames(tcga_clin) %in% str_sub(check, end = -4),] #all exist in clin
+#
+check_01 <- str_replace(check, "-02$", "-01")
+rows_to_remove <- c("TCGA-06-0125-02", "TCGA-06-0190-02", 
+                    "TCGA-06-0210-02", "TCGA-14-1034-02", 
+                    "TCGA-06-0211-02")
+
+tcga_rna <- tcga_rna[!rownames(tcga_rna) %in% rows_to_remove, ]
+max(tcga_rna)
+min(tcga_rna)
+
+tcga_rna_log2 <- apply(tcga_rna, c(1, 2), function(value) log2(value + 1))
+min(tcga_rna_log2) #0
+max(tcga_rna_log2) #19.87406
+
+#
+
+tcga_common_genes <- intersect(colnames(tcga_rna_log2),coef_data$variable)
+tcga_rna_log2_subset <- tcga_rna_log2[, tcga_common_genes]
+
+intersect(rownames(coef_data),tcga_common_genes)
+
+result1 <- tcga_rna_log2_subset %*% as.numeric(coef_data[tcga_common_genes,]$coefficient)
+
+rownames(result1) <- str_sub(row.names(result1), end = -4)
+
+tcga_clin$DPD_prognosis <- result1[str_sub(row.names(result1)) %in% row.names(tcga_clin), ]
+hist(tcga_clin$DPD_prognosis)
+
+#assign to positive,negative (I only have positive and decided to select a positive threshold)
+tcga_clin$outcome <- ifelse(tcga_clin$DPD_prognosis > 0, "Positive",
+                            ifelse(tcga_clin$DPD_prognosis == 0, "0", "Negative"))
+
+
+rownames(clin_sample) <- clin_sample$SAMPLE_ID
+clin_sample[rownames(clin_sample) %in% rownames(tcga_clin)]
+
+
+surv_obj <- Surv(time = tcga_clin$OS_MONTHS, 
+                 
+                 event = tcga_clin$OS_STATUS=="1:DECEASED")
+fit <- survfit(surv_obj ~ outcome , data = tcga_clin)
+
+ggsurvplot(fit, data = tcga_clin, xlab = "Days", ylab = "Overall survival",pval = TRUE,
+           risk.table =TRUE)
+
+
+fit.coxph <- coxph(surv_obj ~ SEX + AGE +outcome +RADIATION_THERAPY, data = tcga_clin)
+
+ggforest(fit.coxph, data = tcga_clin)           
