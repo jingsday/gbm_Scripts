@@ -60,13 +60,12 @@ cgga_325RNA_log2 <- apply(cgga_325RNA, c(1, 2), function(value) log2(value + 1))
 
 
 common_genes <- intersect(colnames(cgga_325RNA), colnames(cgga_693RNA))
-cgga_693RNA[,common_genes]
 
 comb_clin <- rbind(clin_325, clin_693)
 comb_clin$Gender <- trimws(comb_clin$Gender)
 
 #RNA
-common_genes <- intersect(colnames(cgga_693RNA_log2), colnames(cgga_325RNA_log2))
+common_genes <- intersect(colnames(cgga_693RNA_log2), colnames(cgga_325RNA_log2))#23271
 
 # Step 3: Subset to common genes
 cgga_693RNA_subset <- cgga_693RNA_log2[, common_genes, drop = FALSE]
@@ -144,7 +143,8 @@ library("penalized")
 fit_glm <- glmnet(path_filt,surv_filt,family="cox") # , alpha = 1, standardize = TRUE, maxit = 1000
 print(fit_glm)
 # analysing results
-cfs = coef(fit_glm,s=0.007992)
+cfs = coef(fit_glm,s=0.007992) #27 13 0.56 0.007992
+
 meaning_coefs = rownames(cfs)[cfs[,1]!= 0]
 meaning_vals = cfs[cfs[,1]!=0,]
 
@@ -159,7 +159,6 @@ ggplot(coef_data, aes(x = reorder(variable, coefficient), y = coefficient)) +
   theme_minimal()
 
 #Full gene set
-
 fit_glm <- glmnet(RNA_combined_filt, surv_filt, family="cox")# , alpha = 1, standardize = TRUE, maxit = 1000)
 print(fit_glm)
 
@@ -275,7 +274,6 @@ ggsave(paste0(outdir,"forest_plot.png"), plot = forest_plot, width = 10, height 
 
 
 #Lincs genes 
-
 stv <- read_excel('/home/jing/Phd_project/project_GBM/gbm_OUTPUT/gbm_OUTPUT_LINCS/ALL_DATA_2020_Jing_gbm_del.xlsx',
                   sheet = 'STVs')
 
@@ -284,7 +282,7 @@ common_genes <- intersect(colnames(RNA_combined_filt), stv$Gene)
 RNA_combined_lincs <- RNA_combined_filt[,common_genes]
 
 
-fit_glm <- glmnet(RNA_combined_lincs, surv_filt, family="cox",nlambda = 200)# , alpha = 1, standardize = TRUE, maxit = 1000)
+fit_glm <- glmnet(RNA_combined_lincs, surv_filt, family="cox",nlambda = 100)# , alpha = 1, standardize = TRUE, maxit = 1000)
 print(fit_glm)
 
 cvfit <- cv.glmnet(data.matrix(RNA_combined_lincs),surv_filt,family="cox",type.measure = 'C',nlambda=200)
@@ -295,7 +293,7 @@ cvfit$
 cvfit$lambda.1se
 print(lambda_1se)
 
-cfs = coef(fit_glm,s=  0.001701) #200 285 64.20 0.001701
+cfs = coef(fit_glm,s=  0.001701) #100 285 64.14 0.001701
 
 #By increasing gene number it doesn't help either
 meaning_coefs = rownames(cfs)[cfs[,1]!= 0]
