@@ -46,6 +46,8 @@ clin_693_raw <- read.delim(paste0(wkdir,"gbm_DATA_CGGA/CGGA.mRNAseq_693_clinical
 table(clin_693_raw$IDH_mutation_status)
 clin_693 <- clin_693_raw[clin_693_raw$IDH_mutation_status %in% c('Wildtype'),]
 clin_693 <- clin_693[clin_693$Grade %in% c('WHO IV'),]
+clin_693$Age <- as.integer(clin_693$Age)
+clin_693 <- clin_693[clin_693$Age >18,] #Remove pediatric patients
 
 cgga_693RNA_raw <- read.delim(paste0(wkdir,"gbm_DATA_CGGA/CGGA.mRNAseq_693.RSEM-genes.20200506.txt"),check.names = FALSE)
 cgga_693RNA_raw[is.na(cgga_693RNA_raw)] <- 0
@@ -66,7 +68,8 @@ clin_325_raw <- read.delim(paste0(wkdir,"gbm_DATA_CGGA/CGGA.mRNAseq_325_clinical
 clin_325 <- clin_325_raw[clin_325_raw$PRS_type !="Secondary",]
 clin_325 <- clin_325[clin_325$IDH_mutation_status %in% c('Wildtype'),]
 clin_325 <- clin_325[clin_325$Grade %in% c('WHO IV'),]
-clin_325 <- clin_325[clin_325$Age != 11,] #Remove pediatric patients
+clin_325$Age <- as.integer(clin_325$Age)
+clin_325 <- clin_325[clin_325$Age >18,] #Remove pediatric patients
 
 table(clin_325$IDH_mutation_status)
 #RNA
@@ -220,10 +223,10 @@ which(is.na(surv_filt))
 paste(which(is.na(surv_filt)),collapse = ' , ')
 
 
-surv_filt <-surv_filt[-c(108 , 145 , 174 , 176 , 185 , 240 , 249 , 271),]
-RNA_combined_filt <- RNA_combined_filt[-c(108 , 145 , 174 , 176 , 185 , 240 , 249 , 271),]
-comb_clin_filt<-comb_clin_filt[-c(108 , 145 , 174 , 176 , 185 , 240 , 249 , 271),]
-path_filt <-path_df[-c(108 , 145 , 174 , 176 , 185 , 240 , 249 , 271),]
+surv_filt <-surv_filt[-c(107 , 144 , 172 , 174 , 183 , 236 , 244 , 266),]
+RNA_combined_filt <- RNA_combined_filt[-c(107 , 144 , 172 , 174 , 183 , 236 , 244 , 266),]
+comb_clin_filt<-comb_clin_filt[-c(107 , 144 , 172 , 174 , 183 , 236 , 244 , 266),]
+path_filt <-path_df[-c(107 , 144 , 172 , 174 , 183 , 236 , 244 , 266),]
 
 
 fit.coxph <- coxph(surv_filt ~  EGFR + Hypoxia   + TGFb  + `JAK-STAT` + TNFa, 
@@ -246,7 +249,7 @@ fit_glm <- glmnet(path_filt,surv_filt,family="cox") # , alpha = 1, standardize =
 print(fit_glm)
 
 # analysing results
-cfs = coef(fit_glm,s=0.001175)
+cfs = coef(fit_glm,s= 0.002017)
 meaning_coefs = rownames(cfs)[cfs[,1]!= 0]
 meaning_vals = cfs[cfs[,1]!=0,]
 
@@ -260,7 +263,6 @@ ggplot(coef_data, aes(x = reorder(variable, coefficient), y = coefficient)) +
        x = "Pathways", y = "Coefficient") +
   theme_minimal()
 
-clin_raw$
 fit_glm <- glmnet(RNA_combined_filt, surv_filt, family="cox",nlambda = 150)# , alpha = 1, standardize = TRUE, maxit = 1000)
 print(fit_glm)
 
@@ -268,7 +270,7 @@ cvfit <- cv.glmnet(data.matrix(RNA_combined_filt),surv_filt,family="cox",type.me
 plot(cvfit)
 table(clin_raw$ETHNICITY)
 
-cfs = coef(fit_glm,s= 0.001647)
+cfs = coef(fit_glm,s= 0.001481)
 
 meaning_coefs = rownames(cfs)[cfs[,1]!= 0]
 meaning_vals = cfs[cfs[,1]!=0,]
@@ -289,7 +291,7 @@ plot(cvfit)
 cvfit$lambda.1se
 
 
-cfs = coef(fit_glm,s=  0.001284)#184 306 58.22 0.002419 #200 407 42.16 0.001284
+cfs = coef(fit_glm,s=  0.001344)#184 306 58.22 0.002419 #200 407 42.16 0.001284
 meaning_coefs = rownames(cfs)[cfs[,1]!= 0]
 meaning_vals = cfs[cfs[,1]!=0,]
 
@@ -320,3 +322,4 @@ surv_obj_filt <- Surv(time = clin_comb_final$OS_MONTHS,
 fit <- survfit(surv_obj_filt ~ outcome , data = clin_comb_final)
 ggsurvplot(fit, data = clin_comb_final, xlab = "Days", ylab = "Overall survival",pval = TRUE,
            risk.table =TRUE)
+

@@ -12,6 +12,8 @@ clin_693_raw <- read.delim(paste0(wkdir,"gbm_DATA_CGGA/CGGA.mRNAseq_693_clinical
 table(clin_693_raw$IDH_mutation_status)
 clin_693 <- clin_693_raw[clin_693_raw$IDH_mutation_status %in% c('Wildtype'),]
 clin_693 <- clin_693[clin_693$Grade %in% c('WHO IV'),]
+clin_693$Age <- as.integer(clin_693$Age)
+clin_693 <- clin_693[clin_693$Age >18,] #Remove pediatric patients
 
 cgga_693RNA_raw <- read.delim(paste0(wkdir,"gbm_DATA_CGGA/CGGA.mRNAseq_693.RSEM-genes.20200506.txt"),check.names = FALSE)
 cgga_693RNA_raw[is.na(cgga_693RNA_raw)] <- 0
@@ -34,6 +36,8 @@ clin_325_raw <- read.delim(paste0(wkdir,"gbm_DATA_CGGA/CGGA.mRNAseq_325_clinical
 clin_325 <- clin_325_raw[clin_325_raw$PRS_type !="Secondary",]
 clin_325 <- clin_325[clin_325$IDH_mutation_status %in% c('Wildtype'),]
 clin_325 <- clin_325[clin_325$Grade %in% c('WHO IV'),]
+clin_325$Age <- as.integer(clin_325$Age)
+clin_325 <- clin_325[clin_325$Age >18,] #Remove pediatric patients
 
 table(clin_325$IDH_mutation_status)
 #RNA
@@ -117,10 +121,10 @@ paste(which(is.na(surv_filt)),collapse = ' , ')
 
 RNA_combined_filt[is.na(RNA_combined_filt)] <- 0
 
-surv_filt <-surv_filt[-c(109 , 146 , 175 , 177 , 186 , 241 , 250 , 272),]
-RNA_combined_filt <- RNA_combined_filt[-c(109 , 146 , 175 , 177 , 186 , 241 , 250 , 272),]
-comb_clin_filt<-comb_clin_filt[-c(109 , 146 , 175 , 177 , 186 , 241 , 250 , 272),]
-path_filt <-path_df[-c(109 , 146 , 175 , 177 , 186 , 241 , 250 , 272),]
+surv_filt <-surv_filt[-c(107 , 144 , 172 , 174 , 183 , 236 , 244 , 266),]
+RNA_combined_filt <- RNA_combined_filt[-c(107 , 144 , 172 , 174 , 183 , 236 , 244 , 266),]
+comb_clin_filt<-comb_clin_filt[-c(107 , 144 , 172 , 174 , 183 , 236 , 244 , 266),]
+path_filt <-path_df[-c(107 , 144 , 172 , 174 , 183 , 236 , 244 , 266),]
 
 fit.coxph <- coxph(surv_filt ~  EGFR + Hypoxia   + TGFb  + `JAK-STAT` + TNFa, 
                    data = path_filt)
@@ -140,7 +144,7 @@ library("penalized")
 fit_glm <- glmnet(path_filt,surv_filt,family="cox") # , alpha = 1, standardize = TRUE, maxit = 1000
 print(fit_glm)
 # analysing results
-cfs = coef(fit_glm,s=0.000925)
+cfs = coef(fit_glm,s=0.007992)
 meaning_coefs = rownames(cfs)[cfs[,1]!= 0]
 meaning_vals = cfs[cfs[,1]!=0,]
 
@@ -162,7 +166,7 @@ print(fit_glm)
 cvfit <- cv.glmnet(data.matrix(RNA_combined_filt),surv_filt,family="cox",type.measure = 'C')
 plot(cvfit)
 
-cfs = coef(fit_glm,s= 0.002168)
+cfs = coef(fit_glm,s= 0.002107)
 
 meaning_coefs = rownames(cfs)[cfs[,1]!= 0]
 meaning_vals = cfs[cfs[,1]!=0,]
@@ -291,7 +295,8 @@ cvfit$
 cvfit$lambda.1se
 print(lambda_1se)
 
-cfs = coef(fit_glm,s=  0.001654)
+cfs = coef(fit_glm,s=  0.001701) #200 285 64.20 0.001701
+
 #By increasing gene number it doesn't help either
 meaning_coefs = rownames(cfs)[cfs[,1]!= 0]
 meaning_vals = cfs[cfs[,1]!=0,]
@@ -305,7 +310,7 @@ cgga_693RNA_subset <- cgga_693RNA_log2[row.names(cgga_693RNA_log2)%in% row.names
 cgga_693RNA_subset<- cgga_693RNA_subset[, coef_data$variable]
 coef_data_subset <- coef_data[,-1]
 result2 <- cgga_693RNA_subset %*% coef_data_subset
-result2 <- cgga_693RNA_subset %*% as.numeric(stv$GBM_survival)
+#result2 <- cgga_693RNA_subset %*% as.numeric(stv$GBM_survival)
 
 
 cgga_325RNA_subset<- cgga_325RNA_log2[, coef_data$variable]
@@ -338,9 +343,9 @@ ggforest(fit.coxph, data = comb_clin)
 
 
 forest_plot <- ggforest(fit.coxph, data = comb_clin)
-
+outdir <- '/home/jing/Phd_project/project_GBM/gbm_OUTPUT/gbm_OUTPUT_survival'
 # Save the forest plot as an image
-ggsave(paste0(outdir,"forest_plot.png"), plot = forest_plot, width = 10, height = 6, dpi = 300)
+ggsave(paste0(outdir,"adult_forest_plot.png"), plot = forest_plot, width = 10, height = 6, dpi = 300)
 
 
 library(survival)
@@ -361,7 +366,7 @@ surv_plot <- ggsurvplot(
 
 # Save the plot as a PNG
 ggsave(
-  filename = paste0(outdir,"survival_final_plot.png"),
+  filename = paste0(outdir,"adult_survival_final_plot.png"),
   plot = surv_plot$plot,
   device = "png",
   width = 8,
@@ -370,7 +375,7 @@ ggsave(
 )
 
 ggsave(
-  filename = paste0(outdir,"risk_final_table.png"),
+  filename = paste0(outdir,"adult_risk_final_table.png"),
   plot = surv_plot$table,         # Use the risk table component
   device = "png",
   width = 8,
@@ -390,8 +395,6 @@ table(clin_sample$SAMPLE_TYPE)
 table(clin_sample$TUMOR_TYPE)
 tcga_clin <-tcga_clin_raw[tcga_clin_raw$SUBTYPE!='GBM_IDHmut-non-codel',]
 
-
-
 tcga_rna_raw <- read.delim(paste0(wkdir,"gbm_DATA_TCGA/data_mrna_seq_v2_rsem.txt"),check.names = FALSE)
 tcga_rna_raw[is.na(tcga_rna_raw)] <- 0
 tcga_rna_raw <- tcga_rna_raw[tcga_rna_raw$Hugo_Symbol!='',]
@@ -401,9 +404,13 @@ rownames(tcga_rna_raw) <- tcga_rna_raw$Hugo_Symbol
 tcga_rna_raw <- as.data.frame(t(tcga_rna_raw[-1:-2]))
   
 tcga_clin <- tcga_clin[rownames(tcga_clin) %in% str_sub(row.names(tcga_rna_raw),end=-4),]
+tcga_clin <- tcga_clin[tcga_clin$SUBTYPE == 'GBM_IDHwt',]
+table(tcga_clin$SUBTYPE)
+
 tcga_rna_raw <- tcga_rna_raw[str_sub(rownames(tcga_rna_raw),end=-4) %in% row.names(tcga_clin),]
 
-intersect(str_sub(rownames(tcga_rna_raw),end=-4),rownames(tcga_clin))
+
+tcga_rna <-tcga_rna_raw
 
 surv_obj <- Surv(time = tcga_clin$OS_MONTHS, 
                  event = tcga_clin$OS_STATUS=="1:DECEASED")
@@ -413,27 +420,12 @@ fit <- survfit(surv_obj ~ 1, data = tcga_clin)
 ggsurvplot(fit, data = tcga_clin, xlab = "Month", ylab = "Overall survival", surv.median.line = 'hv',risk.table = TRUE)
 
 
-
-
-tcga_rna <- tcga_rna_raw[tcga_rna_raw$Hugo_Symbol!='',]
-tcga_rna <- tcga_rna[!duplicated(tcga_rna$Hugo_Symbol),]
-rownames(tcga_rna) <- tcga_rna$Hugo_Symbol
-tcga_rna <- as.data.frame(t(tcga_rna[-1:-2]))
-
-
-tcga_clin <- tcga_clin[tcga_clin$SUBTYPE == 'GBM_IDHwt',]
-table(tcga_clin$SUBTYPE)
-#retrieve RNAs of interest
-tcga_rna <- tcga_rna[str_sub(row.names(tcga_rna), end = -4) %in% row.names(tcga_clin), ]
-
-tcga_clin <- tcga_clin[str_sub(row.names(tcga_rna), end = -4),]
-
 max(tcga_rna)
 min(tcga_rna)
 
 tcga_rna_log2 <- apply(tcga_rna, c(1, 2), function(value) log2(value + 1))
 min(tcga_rna_log2) #0
-max(tcga_rna_log2) #19.96911
+max(tcga_rna_log2) #19.87406
 
 
 #dot product
@@ -446,8 +438,9 @@ intersect(rownames(coef_data),tcga_common_genes)
 result1 <- tcga_rna_log2_subset %*% as.numeric(coef_data[tcga_common_genes,]$coefficient)
 
 rownames(result1) <- str_sub(row.names(result1), end = -4)
+tcga_clin$DPD_prognosis <- result1[match(rownames(tcga_clin), rownames(result1))]
 
-tcga_clin$DPD_prognosis <- result1[str_sub(row.names(result1)) %in% row.names(tcga_clin), ]
+#tcga_clin$DPD_prognosis <- result1[row.names(tcga_clin) %in% str_sub(row.names(result1)), ]
 
 
 hist(tcga_clin$DPD_prognosis)
